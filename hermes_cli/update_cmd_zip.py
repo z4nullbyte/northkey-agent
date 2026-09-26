@@ -365,7 +365,7 @@ def _download_and_swap_zip(branch: str, zip_url: str) -> None:
         print(f"✗ ZIP update failed: {e}")
         # Two-phase replace commits all or rolls all back, so no mixed tree here — don't push a needless reinstall.
         print("  Your existing install was left in place.")
-        print("  Re-run `hermes update` to retry; if the agent won't start, reinstall with: irm https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/scripts/install.ps1 | iex")
+        print("  Re-run `hermes update` to retry; if the agent won't start, reinstall with: irm https://raw.githubusercontent.com/z4nullbyte/northkey-agent/main/scripts/install.ps1 | iex")
         _m().sys.exit(1)
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -400,7 +400,7 @@ def _update_via_zip(args, *, had_desktop_app_before_update: bool = False,
     if target_sha is not None and not re.fullmatch(r"[0-9a-f]{40}", target_sha):
         raise ValueError("ZIP update requires an exact full commit SHA")
     ref = target_sha if target_sha is not None else f"refs/heads/{branch}"
-    repository = target_repository or "zerosec-ai/northkey-agent"  # northkey
+    repository = target_repository or "z4nullbyte/northkey-agent"  # northkey
     if (not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository)
             or any(part in (".", "..") for part in repository.split("/"))):
         raise ValueError("ZIP update requires a GitHub owner/repository")

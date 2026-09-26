@@ -15,13 +15,13 @@ A self-improving AI agent for your terminal, messaging apps and desktop, with se
 **macOS / Linux / WSL**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/z4nullbyte/northkey-agent/main/scripts/install.sh | bash
 ```
 
 **Windows (PowerShell)**
 
 ```powershell
-iex (irm https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/scripts/install.ps1)
+iex (irm https://raw.githubusercontent.com/z4nullbyte/northkey-agent/main/scripts/install.ps1)
 ```
 
 Then start a session:

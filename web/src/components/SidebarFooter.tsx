@@ -21,7 +21,7 @@ export function SidebarFooter({ status }: SidebarFooterProps) {
       </Typography>
 
       <a
-        href="https://github.com/zerosec-ai/northkey-agent"
+        href="https://github.com/z4nullbyte/northkey-agent"
         target="_blank"
         rel="noopener noreferrer"
         className={cn(

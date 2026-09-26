@@ -12,7 +12,7 @@ tagline_short: Pointed north.
 glyph: "✦"                     # the mark: U+2726, one cell wide in every locale
 
 repo:
-  owner: zerosec-ai            # GitHub owner of the fork (confirm before publishing)
+  owner: z4nullbyte            # GitHub owner of the fork
   name: northkey-agent
   branch: main                 # the branch every Northkey install follows
 
@@ -21,7 +21,7 @@ repo:
 # redirecting. Northkey publishes no records today, so any other channel name
 # reports "not found" instead of reaching Nous's archive.
 channels:
-  base_url: https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/northkey/release-archive
+  base_url: https://raw.githubusercontent.com/z4nullbyte/northkey-agent/main/northkey/release-archive
 
 skin:
   default: northkey            # built-in skin every profile starts on

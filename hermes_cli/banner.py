@@ -187,7 +187,7 @@ def _compute_git_banner_state(repo_dir: Optional[Path] = None) -> Optional[dict]
     return {"upstream": upstream, "local": local, "ahead": max(ahead, 0)}
 
 
-_RELEASE_URL_BASE = "https://github.com/zerosec-ai/northkey-agent/releases/tag"  # northkey
+_RELEASE_URL_BASE = "https://github.com/z4nullbyte/northkey-agent/releases/tag"  # northkey
 
 
 def get_latest_release_tag(repo_dir: Optional[Path] = None) -> Optional[tuple]:

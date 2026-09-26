@@ -72,16 +72,16 @@ Because `main` only moves forward through merges, installs always fast-forward. 
 Re-run the Northkey installer. It recognises a checkout whose origin is NousResearch/hermes-agent, re-points it at Northkey and updates it (the `installer-origin-*` seams):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/scripts/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/z4nullbyte/northkey-agent/main/scripts/install.sh | bash
 # Windows PowerShell:
-iex (irm https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/scripts/install.ps1)
+iex (irm https://raw.githubusercontent.com/z4nullbyte/northkey-agent/main/scripts/install.ps1)
 ```
 
 Manual alternative (the first update still runs Hermes' own updater, hence `--branch main --yes`):
 
 ```bash
 cd ~/.hermes/hermes-agent        # Windows: %LOCALAPPDATA%\hermes\hermes-agent
-git remote set-url origin https://github.com/zerosec-ai/northkey-agent.git
+git remote set-url origin https://github.com/z4nullbyte/northkey-agent.git
 hermes update --branch main --yes
 git remote remove upstream 2>/dev/null || true
 ```
@@ -90,10 +90,10 @@ An untouched SOUL.md seeded by Hermes is upgraded to the Northkey identity autom
 
 ## Publishing checklist
 
-1. Confirm `repo.owner` / `repo.name` in `brand.yaml` (currently `zerosec-ai/northkey-agent`), run `nk.py render`, and update the URLs in `.github/README.md` (a test checks they match).
+1. Confirm `repo.owner` / `repo.name` in `brand.yaml` (currently `z4nullbyte/northkey-agent`), run `nk.py render`, and update the URLs in `.github/README.md` (a test checks they match).
 2. Create the GitHub repository **public** (installs clone it anonymously), then push: `git push origin main` and mirror upstream tags: `git push origin $(python northkey/tools/nk.py tag-refspecs)`.
-3. `bash northkey/tools/github-setup.sh zerosec-ai/northkey-agent`: disables upstream's publishers, creates the `upstream-sync` environment, makes the default workflow token read-only, protects `main` (both CI jobs required), allows merge commits only, enables private vulnerability reporting.
-4. `gh secret set NORTHKEY_SYNC_TOKEN --env upstream-sync --repo zerosec-ai/northkey-agent` with a fine-grained token (Contents, Pull requests, Workflows, Actions = read/write).
+3. `bash northkey/tools/github-setup.sh z4nullbyte/northkey-agent`: disables upstream's publishers, creates the `upstream-sync` environment, makes the default workflow token read-only, protects `main` (both CI jobs required), allows merge commits only, enables private vulnerability reporting.
+4. `gh secret set NORTHKEY_SYNC_TOKEN --env upstream-sync --repo z4nullbyte/northkey-agent` with a fine-grained token (Contents, Pull requests, Workflows, Actions = read/write).
 5. Close Dependabot PRs: upstream's action bumps arrive through the sync, and `nk.py pins` (in the CI report) tells you when the fork's own workflows should follow.
 
 The desktop app, Docker image, Nix flake and Termux packages keep upstream's identity and signing and are not published by Northkey yet. Shipping them needs Northkey's own signing identities (Apple Developer ID, Windows code-signing, Store identity) and release storage, plus seams for their download URLs (`nk.py leaks` and `test_update_delivery.py` list where).
