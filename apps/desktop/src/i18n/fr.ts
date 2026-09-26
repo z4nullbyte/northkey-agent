@@ -3789,6 +3789,8 @@ export const frOverrides = {
     nameLabel: 'Nom',
     namePlaceholder: 'Point du matin',
     promptLabel: 'Invite',
+    scriptLabel: "Script",
+    scriptBadge: "script",
     promptPlaceholder: 'Résumez mes fils Slack non lus et envoyez-moi les 5 principaux par email...',
     frequencyLabel: 'Fréquence',
     deliverLabel: 'Livrer vers',
@@ -4286,6 +4288,9 @@ export const frOverrides = {
     queueStuckTitle: "Message en file d'attente non envoyé",
     queueStuckBody:
       "Un tour en file d'attente a continué à échouer lors de l'envoi. Il est toujours en file d'attente — essayez de l'envoyer à nouveau.",
+    queueDroppedTitle: "Élément en file d'attente abandonné",
+    queueDroppedBody:
+      "Cette entrée d'arrière-plan a été abandonnée car sa session n'a pas pu être reprise après plusieurs tentatives. Le reste de la file d'attente est inchangé.",
     previewUnavailable: 'Aperçu indisponible',
     previewLabel: label => `Aperçu ${label}`,
     couldNotPreview: label => `Impossible d'apercevoir ${label}`,
@@ -5649,7 +5654,9 @@ export const frOverrides = {
       lateAnswer: (question, choice) => `Re : « ${question} » — ma réponse : ${choice}`,
       lateAnswerTip: 'Rédiger cette réponse comme message de suivi',
       lateAnswerHint:
-        "Cette invite n'attend plus de réponse. Choisissez une option pour la rédiger comme message de suivi."
+        "Cette invite n'attend plus de réponse. Choisissez une option pour la rédiger comme message de suivi.",
+      notDelivered:
+        "Cette question n'a pas atteint l'app, elle ne peut donc pas être répondue ici. Appuyez sur Arrêter pour terminer le tour, puis répondez dans le chat."
     },
     catalogInstall: {
       preparing: 'Préparation de l’installation…',

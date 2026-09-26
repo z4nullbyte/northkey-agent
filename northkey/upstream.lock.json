@@ -1,6 +1,6 @@
 {
   "remote": "https://github.com/NousResearch/hermes-agent.git",
   "ref": "main",
-  "commit": "30e025c0c4d362cac14e55ce9767ebe34b01809b",
-  "previous": "c2af461706ae0dbab7271caf45bb9eefde4cdc53"
+  "commit": "f4795c922c2ef9eef244ea0fb886ad863dc452be",
+  "previous": "30e025c0c4d362cac14e55ce9767ebe34b01809b"
 }

@@ -3781,6 +3781,8 @@ export const deOverrides = {
     nameLabel: 'Name',
     namePlaceholder: 'Morgenübersicht',
     promptLabel: 'Prompt',
+    scriptLabel: 'Skript',
+    scriptBadge: 'Skript',
     promptPlaceholder: 'Fass meine ungelesenen Slack-Kanäle zusammen und schick mir die Top 5 per E-Mail...',
     frequencyLabel: 'Häufigkeit',
     deliverLabel: 'Zustellen an',
@@ -4276,6 +4278,9 @@ export const deOverrides = {
     queueStuckTitle: 'Eingereihte Nachricht nicht gesendet',
     queueStuckBody:
       'Ein eingereihter Turn konnte nicht gesendet werden. Er ist noch in der Warteschlange — versuchen Sie, ihn erneut zu senden.',
+    queueDroppedTitle: 'Eingereihte Eingabe verworfen',
+    queueDroppedBody:
+      'Dieser Hintergrund-Eintrag wurde verworfen, da seine Sitzung nach wiederholten Versuchen nicht fortgesetzt werden konnte. Die übrige Warteschlange ist unverändert.',
     previewUnavailable: 'Vorschau nicht verfügbar',
     previewLabel: label => `Vorschau ${label}`,
     couldNotPreview: label => `Vorschau von ${label} fehlgeschlagen`,
@@ -5638,7 +5643,9 @@ export const deOverrides = {
       questionProgress: (answered, total) => `${answered} von ${total} beantwortet`,
       lateAnswer: (question, choice) => `Re: „${question}“ — meine Antwort: ${choice}`,
       lateAnswerTip: 'Diese Antwort als Folgenachricht entwerfen',
-      lateAnswerHint: 'Dieser Prompt wartet nicht mehr. Wählen Sie eine Option, um sie als Folgenachricht zu entwerfen.'
+      lateAnswerHint: 'Dieser Prompt wartet nicht mehr. Wählen Sie eine Option, um sie als Folgenachricht zu entwerfen.',
+      notDelivered:
+        'Diese Frage hat die App nicht erreicht und kann hier nicht beantwortet werden. Klicken Sie auf Stopp, um den Durchgang zu beenden, und antworten Sie dann im Chat.'
     },
     catalogInstall: {
       preparing: 'Installation wird vorbereitet…',

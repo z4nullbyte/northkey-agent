@@ -3192,6 +3192,8 @@ export const zh = defineLocale({
     nameLabel: '名称',
     namePlaceholder: '晨间简报',
     promptLabel: '提示词',
+    scriptLabel: '脚本',
+    scriptBadge: '脚本',
     promptPlaceholder: '总结我未读的 Slack 话题，并把前 5 条邮件发给我…',
     frequencyLabel: '频率',
     deliverLabel: '投递至',
@@ -3671,6 +3673,8 @@ export const zh = defineLocale({
     queueResumeTip: '已被停止操作暂停 — 继续发送排队的回合',
     queueStuckTitle: '排队消息未发送',
     queueStuckBody: '排队的对话多次发送失败。它仍在队列中，请重试发送。',
+    queueDroppedTitle: '已丢弃排队内容',
+    queueDroppedBody: '该后台队列条目因会话多次尝试后仍无法恢复而被丢弃。队列中的其他内容不受影响。',
     previewUnavailable: '预览不可用',
     previewLabel: label => `预览 ${label}`,
     couldNotPreview: label => `无法预览 ${label}`,
@@ -4826,7 +4830,8 @@ export const zh = defineLocale({
       questionProgress: (answered, total) => `已回答 ${answered}/${total}`,
       lateAnswer: (question, choice) => `关于"${question}" — 我的回答: ${choice}`,
       lateAnswerTip: '将此回答起草为后续消息',
-      lateAnswerHint: '此问题已不再等待回答。选择一个选项会将其起草为后续消息。'
+      lateAnswerHint: '此问题已不再等待回答。选择一个选项会将其起草为后续消息。',
+      notDelivered: '此问题未送达应用，无法在此回答。请按停止结束本轮，然后在聊天中回复。'
     },
     catalogInstall: {
       preparing: '正在准备安装…',

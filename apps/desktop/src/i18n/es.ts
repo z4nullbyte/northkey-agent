@@ -3770,6 +3770,8 @@ export const esOverrides = {
     nameLabel: 'Nombre',
     namePlaceholder: 'Resumen matutino',
     promptLabel: 'Prompt',
+    scriptLabel: 'Script',
+    scriptBadge: 'script',
     promptPlaceholder: 'Resume mis hilos de Slack sin leer y envíame por email los 5 principales...',
     frequencyLabel: 'Frecuencia',
     deliverLabel: 'Entregar a',
@@ -4266,6 +4268,9 @@ export const esOverrides = {
     queueResumeTip: 'La cola se pausó al detener; reanuda el envío de los turnos en cola',
     queueStuckTitle: 'Mensaje en cola no enviado',
     queueStuckBody: 'Un turno en cola no llegó a enviarse. Sigue en la cola; vuelve a intentarlo.',
+    queueDroppedTitle: 'Entrada en cola descartada',
+    queueDroppedBody:
+      'Se descartó esta entrada en segundo plano porque su sesión no se pudo reanudar tras varios intentos. El resto de la cola no se ha visto afectado.',
     previewUnavailable: 'Vista previa no disponible',
     previewLabel: label => `Vista previa de ${label}`,
     couldNotPreview: label => `No se pudo previsualizar ${label}`,
@@ -5629,7 +5634,9 @@ export const esOverrides = {
       lateAnswer: (question, choice) => `Con respecto a “${question}”: mi respuesta es ${choice}`,
       lateAnswerTip: 'Redactar esta respuesta como mensaje de seguimiento',
       lateAnswerHint:
-        'Este prompt ya no espera una respuesta. Elige una opción para redactarla como mensaje de seguimiento.'
+        'Este prompt ya no espera una respuesta. Elige una opción para redactarla como mensaje de seguimiento.',
+      notDelivered:
+        'Esta pregunta no llegó a la app, así que no se puede responder aquí. Pulsa Detener para terminar el turno y luego responde en el chat.'
     },
     catalogInstall: {
       preparing: 'Preparando la instalación…',

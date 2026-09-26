@@ -2335,6 +2335,8 @@ export const ja = defineLocale({
     nameLabel: '名前',
     namePlaceholder: '例: 日次サマリー',
     promptLabel: 'プロンプト',
+    scriptLabel: 'スクリプト',
+    scriptBadge: 'スクリプト',
     promptPlaceholder: '実行ごとにエージェントが行う内容は？',
     frequencyLabel: '頻度',
     deliverLabel: '配信先',
@@ -2798,6 +2800,9 @@ export const ja = defineLocale({
     queueStuckTitle: 'キュー内のメッセージを送信できません',
     queueStuckBody:
       'キューに入れたターンの送信が繰り返し失敗しました。まだキューに残っています。もう一度送信してください。',
+    queueDroppedTitle: 'キューのエントリを破棄しました',
+    queueDroppedBody:
+      'このバックグラウンドのエントリは、セッションを繰り返し再開できなかったため破棄されました。キューの他のエントリには影響しません。',
     previewUnavailable: 'プレビューは利用できません',
     previewLabel: label => `${label} のプレビュー`,
     couldNotPreview: label => `${label} をプレビューできませんでした`,
@@ -3867,7 +3872,9 @@ export const ja = defineLocale({
       questionProgress: (answered, total) => `${total}問中${answered}問回答済み`,
       lateAnswer: (question, choice) => `「${question}」について — 私の回答: ${choice}`,
       lateAnswerTip: 'この回答をフォローアップメッセージとして下書きします',
-      lateAnswerHint: 'この質問はもう回答を待っていません。選択肢を選ぶとフォローアップメッセージとして下書きされます。'
+      lateAnswerHint: 'この質問はもう回答を待っていません。選択肢を選ぶとフォローアップメッセージとして下書きされます。',
+      notDelivered:
+        'この質問はアプリに届かなかったため、ここでは回答できません。停止を押してターンを終了し、チャットで返信してください。'
     },
     tool: {
       copyCode: 'コードをコピー',
