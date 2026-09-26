@@ -1,0 +1,122 @@
+# Northkey: quiet luxury for the terminal.
+#
+# Graphite neutrals, one glacial accent, and a champagne metallic kept for the
+# ✦ mark. Dark-authored ("Nocturne") with a hand-tuned light overlay ("Cloud").
+# Registered as a built-in skin by hermes_cli/northkey_brand.py, so upstream's
+# palette audit (tests/hermes_cli/test_skin_palettes.py) checks it on every sync.
+# Glyphs are East-Asian-Width Neutral: one cell wide in every locale.
+# Regenerate the art with: python northkey/design/marks.py
+
+name: northkey
+description: Northkey. Graphite, glacier and champagne, in quiet luxury.
+
+colors:
+  background: "#0B0D10"          # ink: GUI base surface
+  ui_text: "#E6E8EB"
+  ui_border: "#2A2F37"
+  banner_border: "#5A6270"       # hairline
+  banner_title: "#D9C29C"        # champagne, reserved for the mark and titles
+  banner_accent: "#8CCFE0"       # glacier, the one accent
+  banner_dim: "#8A919C"
+  banner_text: "#E6E8EB"         # platinum
+  ui_accent: "#8CCFE0"
+  ui_label: "#A3AAB5"            # pewter
+  ui_ok: "#7CC6A0"
+  ui_error: "#F0877E"
+  ui_warn: "#E3B66B"
+  prompt: "#E6E8EB"
+  input_rule: "#5A6270"
+  response_border: "#4F7F8C"     # glacier hairline
+  status_bar_bg: "#0B0D10"
+  status_bar_text: "#A3AAB5"
+  status_bar_strong: "#E6E8EB"
+  status_bar_dim: "#6B7380"
+  status_bar_good: "#7CC6A0"
+  status_bar_warn: "#E3B66B"
+  status_bar_bad: "#F0A36E"
+  status_bar_critical: "#F0877E"
+  session_label: "#D9C29C"
+  session_border: "#5A6270"
+  completion_menu_bg: "#13161B"
+  completion_menu_current_bg: "#243038"
+  selection_bg: "#1E2A32"
+  shell_dollar: "#8CCFE0"
+  voice_status_bg: "#13161B"
+
+light_colors:
+  banner_border: "#C9CDD3"
+  banner_title: "#7F6230"        # bronze
+  banner_accent: "#0A6A80"       # deep glacier
+  banner_dim: "#646B77"
+  banner_text: "#14171C"
+  ui_accent: "#0A6A80"
+  ui_label: "#4A5260"
+  ui_ok: "#1D7A52"
+  ui_error: "#B0342A"
+  ui_warn: "#8A5A00"
+  prompt: "#14171C"
+  input_rule: "#B8BDC4"
+  response_border: "#8FB0BA"
+  status_bar_bg: "#F2F1EC"
+  status_bar_text: "#4A5260"
+  status_bar_strong: "#14171C"
+  status_bar_dim: "#6B7380"
+  status_bar_good: "#1D7A52"
+  status_bar_warn: "#8A5A00"
+  status_bar_bad: "#A34B12"
+  status_bar_critical: "#B0342A"
+  session_label: "#7F6230"
+  session_border: "#B8BDC4"
+  completion_menu_bg: "#F4F3EF"
+  completion_menu_current_bg: "#D2E1E7"
+  selection_bg: "#D6E4EA"
+  shell_dollar: "#0A6A80"
+  voice_status_bg: "#F4F3EF"
+
+spinner:
+  waiting_faces: ["∙", "✧", "✦", "✧"]
+  thinking_faces: ["✦", "✧", "⟡", "✧"]
+  thinking_verbs:
+    - orienting
+    - taking a bearing
+    - reading the terrain
+    - charting a course
+    - aligning
+    - tracing the path
+    - weighing options
+    - composing
+    - refining
+
+branding:
+  agent_name: Northkey
+  welcome: "Northkey is ready. Type a message, or /help for commands."
+  goodbye: "Until next time. ✦"
+  response_label: " ✦ Northkey "
+  prompt_symbol: "›"
+  help_header: "✦ Commands"
+
+tool_prefix: "╎"
+
+banner_logo: |-
+  [bold #D9C29C]✦[/]  [#E6E8EB]⡷⡀⡇⠀⡎⠉⡆⠀⣏⣉⠆⠀⠉⡏⠁⠀⣇⣀⡇⠀⣇⠔⠁⠀⣏⣉⠁⠀⠣⡠⠃[/]
+     [#C9CED6]⡇⠱⡇⠀⢇⣀⠇⠀⡇⠑⡄⠀⠀⡇⠀⠀⡇⠀⡇⠀⡏⠢⡀⠀⣇⣀⡀⠀⠀⡇⠀[/]
+
+banner_hero: |-
+  [#D9C29C]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
+  [#D9C29C]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
+  [#CDBB9A]⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⠤⠀⡇⠠⢤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
+  [#BFB6A6]⠀⠀⠀⠀⠀⠀⣠⠞⠉⠀⠀⠀⡇⠀⠀⠈⠙⢦⡀⠀⠀⠀⠀⠀⠀[/]
+  [#AEB1B6]⠀⠀⠀⠀⠀⣰⠃⠀⠀⠀⠀⢰⣷⠀⠀⠀⠀⠀⢳⡀⠀⠀⠀⠀⠀[/]
+  [#8CCFE0]⠀⠀⠀⠀⠀⠃⠀⠀⠀⣀⡴⠏⡏⠷⣄⡀⠀⠀⠀⠃⠀⠀⠀⠀⠀[/]
+  [#8CCFE0]⠀⠀⠀⠉⠉⡉⠉⠉⠉⠙⠻⣍⣏⡽⠛⠉⠉⠉⠉⡉⠉⠁⠀⠀⠀[/]
+  [#9AA3AF]⠀⠀⠀⠀⠀⢳⡀⠀⠀⠀⠀⠘⡟⠀⠀⠀⠀⠀⣰⠃⠀⠀⠀⠀⠀[/]
+  [#8A919C]⠀⠀⠀⠀⠀⠀⠳⣄⠀⠀⠀⠀⡇⠀⠀⠀⢀⡴⠃⠀⠀⠀⠀⠀⠀[/]
+  [#7A828E]⠀⠀⠀⠀⠀⠀⠀⠈⠙⠲⠤⠀⡇⠠⠴⠚⠉⠀⠀⠀⠀⠀⠀⠀⠀[/]
+  [#6B7380]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[/]
+  [dim #8A919C]⠀⠀⠀⠀⠀⠀pointed north⠀⠀⠀⠀⠀⠀[/]
+
+customCSS: |-
+  /* Northkey desktop accents: hairline focus rings, restrained motion. */
+  :root { --nk-glacier: #8CCFE0; --nk-champagne: #D9C29C; }
+  *:focus-visible { outline: 1px solid var(--nk-glacier); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

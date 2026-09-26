@@ -916,7 +916,7 @@ def _build_compact_banner() -> str:
     dim_color = _color("banner_dim", "#B8860B")
 
     if (getattr(_skin, "name", "default") if _skin else "default") == "default":
-        tiny_line = "☤ NOUS HERMES"
+        tiny_line = "✦ NORTHKEY"
     else:
         tiny_line = _skin.get_branding("agent_name", "Hermes Agent") if _skin else "Hermes Agent"
     line1 = f"{tiny_line} - AI Agent Framework"
@@ -925,13 +925,13 @@ def _build_compact_banner() -> str:
         from hermes_cli import __release_date__ as _release_date
         from hermes_cli.version_info import get_version_info
 
-        version_line = f"Hermes Agent v{get_version_info().derived_version} ({_release_date})"
+        version_line = f"Northkey v{get_version_info().derived_version} ({_release_date})"
     else:
         version_line = format_banner_version_label()
 
     w = min(shutil.get_terminal_size().columns - 2, 88)
     if w < 30:
-        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]- Nous Research[/]\n"
+        return f"\n[{title_color}]{tiny_line}[/] [dim {dim_color}]- Pointed north.[/]\n"
 
     inner = w - 2  # inside the box border
     bar = "═" * w

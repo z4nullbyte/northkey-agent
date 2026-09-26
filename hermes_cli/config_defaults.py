@@ -376,11 +376,11 @@ DEFAULT_CONFIG = {
         # Keyless free-tier ring: with NO web backend configured or keyed, web_search/web_extract
         # rotate round-robin across exa, parallel, firecrawl, keenable public free tiers, failing
         # over on rate limits. Never pre-empts a configured/keyed backend. false = disable.
-        "keyless_fallback": True,
+        "keyless_fallback": False,  # northkey: no silent third-party search tiers
         # One-shot rescue: when the chosen/keyed backend fails a call, THAT call retries once on the
         # keyless ring; the next call tries the chosen backend again (no sticky failover). Off when
         # keyless_fallback is false.
-        "keyless_rescue": True,
+        "keyless_rescue": False,  # northkey
         # Per-vendor tier for vendors with both a keyless free endpoint and a keyed paid path (exa,
         # parallel, firecrawl, keenable; tavily is opt-in keyless via `hermes tools`, not a ring
         # member). Set by the `hermes tools` picker. "free" = always anonymous endpoint even with a
@@ -874,7 +874,7 @@ DEFAULT_CONFIG = {
         # /focus off restores. Never affects what the model sees (focus_view.py).
         "focus_view": False,
         "focus_saved_tool_progress": "all",
-        "skin": "default",
+        "skin": "northkey",  # northkey
         # UI language for static messages (approval prompts, some gateway slash replies); not agent
         # responses/logs/tool outputs. en, zh, ja, de, es, fr, tr, uk; unknown → en.
         "language": "en",
@@ -977,7 +977,7 @@ DEFAULT_CONFIG = {
 
     "dashboard": {
         # Visual theme: "default" | "midnight" | "ember" | "mono" | "cyberpunk" | "rose"
-        "theme": "default",
+        "theme": "northkey",  # northkey
         # Process-isolation rollout controls. Read via the raw config loader, so tui_gateway.server
         # also owns explicit defaults.
         "turn_isolation": False,
@@ -1447,7 +1447,7 @@ DEFAULT_CONFIG = {
         # Security-scan skills the agent writes via skill_manage. Off: the agent can run the same
         # code via terminal() ungated, so it mostly blocks prose with risky keywords. On: a
         # dangerous verdict is a tool error the agent can retry. Hub installs are always scanned.
-        "guard_agent_created": False,
+        "guard_agent_created": True,  # northkey: scan skills the agent writes
         # Advisory NVIDIA SkillEvaluator Tier 1 scan on `hermes skills install` (alongside the
         # enforcing built-in guard), only if `skillevaluator` is on PATH (uv tool install
         # "skillevaluator @ git+https://github.com/NVIDIA/SkillEvaluator.git"). Informational, never
@@ -1653,7 +1653,7 @@ DEFAULT_CONFIG = {
         # Shared by the CLI prompt and gateway/messaging waits. Messaging approvals arrive as a push
         # notification the user may not see immediately — 60s proved too tight on Telegram/Discord (the
         # prompt expired before the user reached their phone), so the default is 300.
-        "mode": "smart",
+        "mode": "manual",  # northkey: a human approves every flagged command
         "timeout": 300,
         "cron_mode": "deny",
         "single_query_mode": "deny",
@@ -1728,7 +1728,7 @@ DEFAULT_CONFIG = {
         # and rotate, so two programs on one login can log each other out; set false to make Hermes use only
         # its own logins (`hermes auth add <provider>`). `hermes auth add openai-codex` still offers the import
         # interactively.
-        "adopt_external_logins": True,
+        "adopt_external_logins": False,  # northkey: never borrow other tools' logins
         # How `hermes auth add openai-codex` / `hermes model` sign in to OpenAI Codex.
         # "device_code" (default): open a URL, enter a code. "browser": authorization-code + PKCE on
         # the loopback listener http://localhost:1455/auth/callback (the redirect OpenAI registered
@@ -2190,7 +2190,7 @@ DEFAULT_CONFIG = {
         # files must be under the Hermes cache, media_delivery_allow_dirs, or fresher than
         # trust_recent_files_seconds — recommended for public-facing gateways so prompt injection
         # can't exfiltrate host secrets. Bridged to HERMES_MEDIA_DELIVERY_STRICT.
-        "strict": False,
+        "strict": True,  # northkey: only allow-listed files leave as chat media
         # Extra roots (project/scratch dirs, mounted shares) from which bare file paths may be
         # uploaded; the Hermes cache is always trusted. List of absolute paths or one
         # os.pathsep-separated string; tildes expanded. Bridged to HERMES_MEDIA_ALLOW_DIRS. Honored

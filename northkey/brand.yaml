@@ -1,0 +1,34 @@
+# Northkey brand manifest: the single source of truth for the rebrand.
+#
+# Every Northkey-specific value that reaches upstream code is rendered from this
+# file by `python northkey/tools/nk.py render`. Change a value here, re-render,
+# commit. Never hand-edit an upstream file: add a seam to northkey/seams.yaml.
+
+name: Northkey                 # product name, always written exactly like this
+name_upper: NORTHKEY
+command: northkey              # extra CLI command; `hermes` keeps working (update contract)
+tagline: Quiet intelligence, pointed north.
+tagline_short: Pointed north.
+glyph: "✦"                     # the mark: U+2726, one cell wide in every locale
+
+repo:
+  owner: zerosec-ai            # GitHub owner of the fork (confirm before publishing)
+  name: northkey-agent
+  branch: main                 # the branch every Northkey install follows
+
+# Where `hermes update` reads channel records. Must be HTTPS, must never
+# redirect, must stay reachable: every update resolves its channel here first.
+# The records themselves live in northkey/release-archive/ (see nk.py record).
+channels:
+  base_url: https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/northkey/release-archive
+
+skin:
+  default: northkey            # built-in skin every profile starts on
+
+upstream:
+  name: Hermes Agent
+  author: Nous Research
+  url: https://github.com/NousResearch/hermes-agent.git
+  ref: main                    # track upstream main (upstream's own default channel)
+
+attribution: Northkey is built on Hermes Agent by Nous Research (MIT License).

@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "name": "main",
+  "repository": "zerosec-ai/northkey-agent",
+  "policy": "source-branch",
+  "state": "active",
+  "revision": 1,
+  "nextSequence": 1,
+  "identity": null,
+  "head": null,
+  "delivery": {
+    "kind": "source-branch",
+    "branch": "main"
+  }
+}

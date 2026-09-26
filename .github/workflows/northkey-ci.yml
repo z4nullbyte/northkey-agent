@@ -1,0 +1,57 @@
+# Northkey CI: proves the fork invariant and runs the fork's tests on every push/PR.
+# Runs with a read-only token and no secrets, so it is safe to run upstream code here.
+name: Northkey CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: northkey-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  invariant:
+    name: Fork invariant (upstream + owned paths + seams)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+      - run: python -m pip install --disable-pip-version-check ruamel.yaml==0.18.16
+      - run: python northkey/tools/nk.py verify --rev HEAD
+
+  tests:
+    name: Northkey tests + upstream brand-sensitive suites
+    needs: invariant
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
+      - run: uv sync --frozen --python 3.14 --group dev --group test
+      - name: Run tests
+        env:
+          HERMES_PYTHON: ${{ github.workspace }}/.venv/bin/python
+        run: >-
+          scripts/run_tests.sh
+          tests/northkey
+          tests/hermes_cli/test_skin_palettes.py
+          tests/hermes_cli/test_skin_engine.py
+          tests/hermes_cli/test_source_check.py
+          tests/hermes_cli/test_update_channel.py
+          -q

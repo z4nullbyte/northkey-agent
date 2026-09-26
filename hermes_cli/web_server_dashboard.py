@@ -418,10 +418,10 @@ def _discover_user_themes() -> list:
     from embedded chat does not hide themes under the server's own ``HERMES_HOME``.
     """
     themes_dir = get_process_hermes_home() / "dashboard-themes"
-    if not themes_dir.is_dir():
-        return []
+    from hermes_cli.northkey_brand import bundled_dashboard_theme_files  # northkey
+    user_files = sorted(themes_dir.glob("*.yaml")) if themes_dir.is_dir() else []
     result = []
-    for f in sorted(themes_dir.glob("*.yaml")):
+    for f in [*bundled_dashboard_theme_files(), *user_files]:
         try:
             data = yaml.safe_load(f.read_text(encoding="utf-8-sig"))
         except Exception:

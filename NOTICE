@@ -1,0 +1,16 @@
+Northkey
+Copyright (c) 2026 the Northkey maintainers
+
+Northkey is built on Hermes Agent by Nous Research
+(https://github.com/NousResearch/hermes-agent), used under the MIT License.
+The original copyright notice and license are kept, unmodified, in LICENSE:
+
+    MIT License
+    Copyright (c) 2025 Nous Research
+
+"Hermes", "Hermes Agent" and "Nous Research" are names of their respective
+owners. Northkey is an independent distribution; it is not affiliated with,
+sponsored by, or endorsed by Nous Research.
+
+Third-party components keep their own licenses (see the dependency metadata in
+uv.lock, package-lock.json and the respective packages).

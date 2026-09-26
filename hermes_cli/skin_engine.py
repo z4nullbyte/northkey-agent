@@ -408,6 +408,14 @@ def _build_skin_config(data: Dict[str, Any]) -> SkinConfig:
         custom_css=str(data.get("customCSS", "")).strip()[:32768])
 
 
+# northkey: register the bundled Northkey skins (northkey/skins/*.yaml) as built-ins.
+try:
+    from hermes_cli.northkey_brand import bundled_skins as _northkey_bundled_skins
+    _BUILTIN_SKINS.update(_northkey_bundled_skins())
+except Exception:  # branding must never break startup
+    logger.debug("Northkey skins unavailable", exc_info=True)
+
+
 def list_skins() -> List[Dict[str, str]]:
     """List all available skins (built-in + user-installed); user skins never shadow built-ins."""
     result = [{"name": name, "description": data.get("description", ""), "source": "builtin"}

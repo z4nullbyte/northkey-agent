@@ -1,0 +1,61 @@
+# Northkey dashboard theme: the web counterpart of northkey/skins/northkey.yaml.
+# Loaded for every profile via the brand-dashboard-themes seam; selected by default
+# through dashboard.theme. No fontUrl on purpose: nothing is fetched from a font
+# CDN (privacy, offline use). Geist/Inter are used when installed, else the
+# platform's own UI face (Segoe UI Variable, SF Pro).
+
+name: northkey
+label: Northkey
+description: Graphite, glacier and champagne. Quiet luxury for the dashboard.
+
+palette:
+  background: "#0B0D10"
+  midground: "#E6E8EB"
+  foreground: { hex: "#FFFFFF", alpha: 0 }
+  warmGlow: "rgba(140, 207, 224, 0.08)"
+  noiseOpacity: 0.3
+
+typography:
+  fontSans: '"Geist", "Inter", "Segoe UI Variable Text", system-ui, -apple-system, "Segoe UI", sans-serif'
+  fontDisplay: '"Geist", "Inter Display", "Segoe UI Variable Display", system-ui, sans-serif'
+  fontMono: '"Geist Mono", "JetBrains Mono", "Cascadia Mono", ui-monospace, Menlo, Consolas, monospace'
+  baseSize: "15px"
+  lineHeight: "1.6"
+  letterSpacing: "0.003em"
+
+layout:
+  radius: "0.625rem"
+  density: comfortable
+layoutVariant: standard
+
+colorOverrides:
+  card: "#111418"
+  cardForeground: "#E6E8EB"
+  popover: "#13161B"
+  popoverForeground: "#E6E8EB"
+  primary: "#8CCFE0"
+  primaryForeground: "#0B0D10"
+  secondary: "#1A1F26"
+  secondaryForeground: "#E6E8EB"
+  muted: "#161A20"
+  mutedForeground: "#A3AAB5"
+  accent: "#D9C29C"
+  accentForeground: "#0B0D10"
+  destructive: "#F0877E"
+  destructiveForeground: "#0B0D10"
+  success: "#7CC6A0"
+  warning: "#E3B66B"
+  border: "#232830"
+  input: "#232830"
+  ring: "#8CCFE0"
+
+customCSS: |
+  /* Northkey: hairline structure, calm motion, one accent. */
+  :root { --nk-glacier: #8CCFE0; --nk-champagne: #D9C29C; --nk-hairline: #232830; }
+  ::selection { background: rgba(140, 207, 224, 0.22); }
+  *:focus-visible { outline: 1px solid var(--nk-glacier); outline-offset: 2px; }
+  h1, h2, h3 { letter-spacing: -0.01em; font-weight: 500; }
+  * { transition-duration: 160ms !important; transition-timing-function: cubic-bezier(.2, .7, .2, 1) !important; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
