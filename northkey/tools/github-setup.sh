@@ -22,13 +22,22 @@ repo="${1:-$(brand_value repo owner)/$(brand_value repo name)}"
 gh repo view "$repo" --json nameWithOwner >/dev/null || { echo "cannot access $repo with gh" >&2; exit 1; }
 echo "Configuring $repo"
 
+# GitHub forks start with Actions off: turn them on, then disable upstream's publishers below.
+if [ "$(gh api "repos/$repo/actions/permissions" --jq .enabled)" != "true" ]; then
+  gh api -X PUT "repos/$repo/actions/permissions" -F enabled=true -f allowed_actions=all >/dev/null
+  echo "  GitHub Actions enabled"
+fi
+
 for wf in canary-release.yml stable-release.yml stable-release-publication.yml desktop-bundled-release.yml \
           bootstrap-installer-build.yml archive-inputs.yml pm-bundle.yml install-e2e.yml install-e2e-run.yml \
-          install-e2e-macos-run.yml install-e2e-windows-run.yml termux-verify.yml nix.yml; do
+          install-e2e-macos-run.yml install-e2e-windows-run.yml termux-verify.yml nix.yml js-autofix.yml; do
   if gh workflow view "$wf" --repo "$repo" >/dev/null 2>&1; then
     gh workflow disable "$wf" --repo "$repo" >/dev/null 2>&1 || true
     echo "  disabled $wf"
   fi
+done
+for wf in northkey-ci.yml northkey-upstream-sync.yml; do
+  gh workflow enable "$wf" --repo "$repo" >/dev/null 2>&1 && echo "  enabled $wf"
 done
 
 gh api -X PUT "repos/$repo/environments/upstream-sync" --input - >/dev/null <<'JSON'

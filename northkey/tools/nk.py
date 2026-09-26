@@ -588,9 +588,9 @@ def tag_refspecs() -> list[str]:
 # ── CLI ───────────────────────────────────────────────────────────────────────
 
 def main(argv: list[str] | None = None) -> int:
-    for stream in (sys.stdout, sys.stderr):  # ✓/✗ on legacy Windows consoles
+    for stream in (sys.stdout, sys.stderr):  # ✓/✗ on legacy Windows consoles; \n even on Windows
         try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
+            stream.reconfigure(encoding="utf-8", errors="replace", newline="\n")
         except (AttributeError, ValueError):
             pass
     parser = argparse.ArgumentParser(prog="nk.py", description=__doc__.splitlines()[0])
