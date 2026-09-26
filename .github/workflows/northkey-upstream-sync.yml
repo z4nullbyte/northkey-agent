@@ -60,7 +60,7 @@ jobs:
           for wf in canary-release.yml stable-release.yml stable-release-publication.yml \
                     desktop-bundled-release.yml bootstrap-installer-build.yml archive-inputs.yml \
                     pm-bundle.yml install-e2e.yml install-e2e-run.yml install-e2e-macos-run.yml \
-                    install-e2e-windows-run.yml termux-verify.yml nix.yml; do
+                    install-e2e-windows-run.yml termux-verify.yml nix.yml js-autofix.yml; do
             gh workflow disable "$wf" >/dev/null 2>&1 || true
           done
 

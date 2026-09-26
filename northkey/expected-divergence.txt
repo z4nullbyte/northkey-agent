@@ -14,6 +14,35 @@ tests/hermes_cli/test_source_release_channels.py::test_missing_pointers_fall_bac
 tests/hermes_cli/test_source_release_channels.py::test_origin_tag_cannot_substitute_a_fork_commit
 tests/hermes_cli/test_source_release_channels.py::test_source_check_and_apply_land_on_selected_release
 tests/hermes_cli/test_source_release_channels.py::test_stable_resolution_uses_promoted_pointer_not_highest_tag
+tests/hermes_cli/test_source_release_channels.py::test_source_check_honors_transient_channel_without_rewriting_record
+# (Linux-only in practice: these skip or fail for environment reasons on Windows.)
+tests/hermes_cli/test_source_channel_integration.py::test_missing_channel_cannot_fall_back_to_main
+tests/hermes_cli/test_source_channel_integration.py::test_offline_retirement_uses_qualified_build_before_current_stable
+tests/hermes_cli/test_source_channel_integration.py::test_passive_check_reports_retirement_without_adopting_it
+tests/hermes_cli/test_source_channel_integration.py::test_real_http_reader_resolves_tagless_build_through_cli
+tests/hermes_cli/test_source_channel_integration.py::test_retirement_adopts_destination_only_after_success
+tests/hermes_cli/test_source_channel_integration.py::test_retirement_refuses_to_downgrade_newer_source
+tests/hermes_cli/test_source_channel_integration.py::test_tagless_channel_check_apply_is_pinned_not_branch_tip
+tests/hermes_cli/test_source_channel_integration.py::test_tagless_zip_apply_uses_pinned_source_archive
+tests/hermes_cli/test_source_channel_integration.py::test_unpublished_main_record_keeps_following_the_git_branch
+tests/hermes_cli/test_source_check.py::test_cache_force_expiry_and_passive_opt_out
+tests/hermes_cli/test_source_check.py::test_channel_failure_never_probes_or_heals_a_branch
+tests/hermes_cli/test_source_check.py::test_counts_are_honest_without_fetch
+tests/hermes_cli/test_source_check.py::test_explicit_and_current_branch_heal_only_after_confirmed_absence
+tests/hermes_cli/test_source_check.py::test_malformed_optional_changelog_and_cache_do_not_hide_the_update
+tests/hermes_cli/test_source_check.py::test_source_admission_is_stamp_owned_not_path_owned
+tests/hermes_cli/test_source_check.py::test_target_worktree_owns_admission_and_fork_comparison
+tests/hermes_cli/test_source_check.py::test_unpublished_main_record_follows_the_branch
+# OFFICIAL_REPOSITORY is the fork, so GitHub API mocks and SSH healing keyed to NousResearch differ.
+tests/hermes_cli/test_source_check.py::test_embedded_revision_keeps_https_ref_advertisement_recovery
+tests/hermes_cli/test_source_check.py::test_official_ssh_healing_uses_public_https_without_retargeting_forks
+tests/hermes_cli/test_source_check.py::test_running_revision_is_not_applied_to_an_explicit_target
+# The SSH-failure hint tells users to switch origin to the fork's HTTPS URL.
+tests/hermes_cli/test_update_fetch_failure_classifier.py::TestClassifyFetchFailure::test_ssh_publickey_denial_reports_ssh_auth_not_generic
+
+# POSIX conveniences also publish the `northkey` alias next to hermes/hermes-acp.
+#   -> tests/northkey/test_brand_surfaces.py::test_northkey_command_is_an_alias_of_hermes_on_posix
+tests/hermes_cli/test_source_launcher_publication.py::test_boot_migrates_legacy_conveniences_to_selected_runtime
 
 # auth.adopt_external_logins is false: Claude Code / Codex CLI logins are not borrowed.
 #   -> tests/northkey/test_brand_surfaces.py::test_secure_defaults
@@ -33,6 +62,7 @@ tests/tui_gateway/test_tui_gateway_server.py::test_config_get_approval_mode_uses
 # Product name in `--version` and the /history speaker label.
 #   -> tests/northkey/test_brand_surfaces.py
 tests/hermes_cli/test_startup_fast_guards.py::test_fast_version_parity
+tests/hermes_cli/test_startup_fast_guards.py::test_cli_starts_from_a_deleted_cwd
 tests/hermes_cli/test_timestamps_command.py::test_history_shows_timestamp_for_stored_turns
 
 # The dashboard also lists the themes bundled in northkey/dashboard-themes/.
