@@ -13,7 +13,7 @@ import urllib.request
 from hermes_cli.update_channel import STABLE_TAG_RE, is_canary_tag
 
 logger = logging.getLogger(__name__)
-_PUBLIC_BASE = "https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/northkey/release-archive"  # northkey: fork-owned channel records
+_PUBLIC_BASE = "https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/northkey/release-archive"  # northkey: fork-owned channel archive
 OFFICIAL_REPOSITORY = "zerosec-ai/northkey-agent"  # northkey
 _GITHUB_ORIGIN = re.compile(
     r"^(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)"
@@ -78,6 +78,8 @@ def resolve_source_target(channel: str, git_cmd=None, cwd=None, *, repository=No
 
     validate_name(channel)
     repository = repository or source_repository(git_cmd, cwd)
+    if channel in ("main", "stable", "canary"):  # northkey: installs follow the fork's branch, no archive round-trip
+        return SourceTarget(channel, "main", repository, branch="main")
     try:
         resolved = _resolve_channel(channel, repository)
     except ChannelNotFound:

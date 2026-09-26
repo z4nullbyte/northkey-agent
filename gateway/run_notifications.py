@@ -30,7 +30,7 @@ logger = logging.getLogger("gateway.run")
 # A failed /update leaves the previous version running; the full pip/git log stays on the host
 # (`hermes update` re-runs it in the terminal) and only a short tail is quoted in chat.
 _UPDATE_FAILED_NOTICE = (
-    "❌ Hermes update failed; the previous version is still running. Run `hermes update` on the "
+    "❌ Northkey update failed; the previous version is still running. Run `hermes update` on the "
     "host to see the full error, or try /update again later.")
 
 # An update's completion notice waits for its target platform adapter to (re)connect before it
@@ -633,7 +633,7 @@ class GatewayNotificationsMixin:
             default_hint = f" (default: {default})" if default else ""
             _p = getattr(adapter, "typed_command_prefix", "/")
             await target.send(
-                f"☤ **Update needs your input:**\n\n{prompt_text}{default_hint}\n\n"
+                f"✦ **Update needs your input:**\n\n{prompt_text}{default_hint}\n\n"
                 f"Reply `{_p}approve` (yes) or `{_p}deny` (no), or type your answer directly."
             )
         # Keep the prompt marker on disk until answered so a restarted watcher can re-forward it.
@@ -687,7 +687,7 @@ class GatewayNotificationsMixin:
                 with _log_suppressed(logging.WARNING, "Update final notification failed: %s"):
                     exit_code = self._update_exit_code(paths)
                     await target.send(
-                        "✅ Hermes update finished." if exit_code == 0 else _UPDATE_FAILED_NOTICE
+                        "✅ Northkey update finished." if exit_code == 0 else _UPDATE_FAILED_NOTICE
                     )
                     logger.info("Update finished (exit=%s), notified %s", exit_code, session_key)
                 self._clear_update_markers(paths, session_key)
@@ -714,7 +714,7 @@ class GatewayNotificationsMixin:
             paths.exit_code.write_text("124", encoding="utf-8")
             await _flush_buffer()
             with suppress(Exception):
-                await target.send("❌ Hermes update timed out after 30 minutes.")
+                await target.send("❌ Northkey update timed out after 30 minutes.")
             self._clear_update_markers(paths, session_key)
 
     async def _send_update_notification(self) -> bool:
@@ -776,7 +776,7 @@ class GatewayNotificationsMixin:
                 from tools.ansi_strip import strip_ansi
                 output = strip_ansi(output).strip()
                 if exit_code == 0:
-                    msg = "✅ Hermes update finished successfully."
+                    msg = "✅ Northkey update finished successfully."
                     if output:
                         msg = f"{msg}\n\n```\n{_update_output_tail(output, 3500)}\n```"
                 else:
@@ -985,7 +985,7 @@ class GatewayNotificationsMixin:
         """
         delivered: set[tuple[str, str, Optional[str]]] = set()
         skipped = skip_targets or set()
-        message = "♻️ Gateway online — Hermes is back and ready."
+        message = "♻️ Gateway online — Northkey is back and ready."
         free_tier_line = self._free_tier_startup_line()
         if free_tier_line:
             message = f"{message}\n{free_tier_line}"

@@ -85,7 +85,7 @@ def fetch_compare_branch(git_cmd: list[str], root: Path, branch: str, depth_args
     """
     if branch == "main":
         # A local probe (~6 ms) spares non-fork installs a failed network fetch (~0.3-1 s).
-        if _git(git_cmd, root, ["remote", "get-url", "upstream"]).returncode == 0:
+        if _uc()._is_fork(_uc()._get_origin_url(git_cmd, root)) and _git(git_cmd, root, ["remote", "get-url", "upstream"]).returncode == 0:  # northkey: a fork origin is canonical
             fetch_result = _fetch(git_cmd, root, depth_args, "upstream", branch)
             if fetch_result.returncode == 0:
                 return fetch_result, f"upstream/{branch}"

@@ -595,9 +595,9 @@ function Write-Err([string]$msg) { Write-Host "[X] $msg" -ForegroundColor Red }
 function Write-Banner {
     Write-Host ""
     Write-Host "+---------------------------------------------------------+" -ForegroundColor Magenta
-    Write-Host "|             * Hermes Agent Installer                    |" -ForegroundColor Magenta
+    Write-Host "|             * Northkey Installer                        |" -ForegroundColor Magenta
     Write-Host "+---------------------------------------------------------+" -ForegroundColor Magenta
-    Write-Host "|  An open source AI agent by Nous Research.              |" -ForegroundColor Magenta
+    Write-Host "|  Built on Hermes Agent by Nous Research (MIT).          |" -ForegroundColor Magenta
     Write-Host "+---------------------------------------------------------+" -ForegroundColor Magenta
     Write-Host ""
 }
@@ -755,7 +755,7 @@ function Stage-Repository {
         Log "Updating $InstallDir ($Branch)"
         # An explicit HERMES_REPO_URL names the source for reruns too, not
         # just the first clone.
-        if ($env:HERMES_REPO_URL) {
+        if ($env:HERMES_REPO_URL -or ((Invoke-Native { git -C $InstallDir remote get-url origin 2>$null }) -match 'github\.com[:/]+NousResearch/hermes-agent(\.git)?/?$')) {  # northkey: move Hermes checkouts to the fork
             Invoke-Native { git -C $InstallDir remote set-url origin $RepoUrl }
             if ($LASTEXITCODE) { Fail "cannot point origin at $RepoUrl" }
         }

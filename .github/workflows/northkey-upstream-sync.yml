@@ -1,12 +1,19 @@
-# Northkey upstream sync: merges the newest NousResearch/hermes-agent into the fork
-# and re-derives the rebrand (northkey/tools/nk.py sync), then opens a PR.
+# Northkey upstream sync: merges the newest NousResearch/hermes-agent into the fork,
+# re-derives the rebrand (northkey/tools/nk.py sync) and opens a PR that auto-merges
+# once Northkey CI passes.
 #
-# This job holds a write token, so it never installs or runs upstream code: it only
-# runs git and nk.py. Northkey CI tests the PR with a read-only token.
+# Security model
+# - The write token lives in the `upstream-sync` environment, which only protected
+#   branches may use. Upstream workflow files pushed to the sync branch run without
+#   it, so they can never read it.
+# - This job runs only git and nk.py (stdlib + ruamel.yaml); it never installs or runs
+#   upstream code. Northkey CI tests the PR with a read-only token.
+# - A sync that ADDS upstream workflow files waits for a human (a new publisher could
+#   otherwise run in the fork); everything else auto-merges after the required checks.
 #
-# Setup (once): add a fine-grained token as the NORTHKEY_SYNC_TOKEN secret with
-# Contents, Pull requests and Workflows = read/write on this repository. Workflows
-# write is required because upstream edits .github/workflows/ regularly.
+# Setup (once): bash northkey/tools/github-setup.sh <owner>/<repo>, then
+#   gh secret set NORTHKEY_SYNC_TOKEN --env upstream-sync --repo <owner>/<repo>
+# with a fine-grained token: Contents, Pull requests, Workflows, Actions = read/write.
 name: Northkey upstream sync
 
 on:
@@ -23,16 +30,19 @@ concurrency:
 jobs:
   sync:
     runs-on: ubuntu-latest
+    environment: upstream-sync
     permissions:
       contents: read
     env:
       GH_TOKEN: ${{ secrets.NORTHKEY_SYNC_TOKEN }}
+      GH_REPO: ${{ github.repository }} # gh would otherwise prefer the `upstream` remote (Nous)
       BRANCH: northkey/upstream-sync
+      BOT_EMAIL: northkey-sync@users.noreply.github.com
     steps:
       - name: Require the sync token
         run: |
           if [ -z "$GH_TOKEN" ]; then
-            echo "::error::Set the NORTHKEY_SYNC_TOKEN secret (see the header of this workflow)."
+            echo "::error::Set NORTHKEY_SYNC_TOKEN in the upstream-sync environment (see this workflow's header)."
             exit 1
           fi
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -44,11 +54,35 @@ jobs:
         with:
           python-version: "3.14"
       - run: python -m pip install --disable-pip-version-check ruamel.yaml==0.18.16
+
+      - name: Keep upstream's publishers disabled in the fork
+        run: |
+          for wf in canary-release.yml stable-release.yml stable-release-publication.yml \
+                    desktop-bundled-release.yml bootstrap-installer-build.yml archive-inputs.yml \
+                    pm-bundle.yml install-e2e.yml install-e2e-run.yml install-e2e-macos-run.yml \
+                    install-e2e-windows-run.yml termux-verify.yml nix.yml; do
+            gh workflow disable "$wf" >/dev/null 2>&1 || true
+          done
+
+      - name: Leave maintainer work on the sync branch alone
+        id: guard
+        run: |
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            git fetch -q origin "$BRANCH"
+            if git log --format=%ae "origin/main..origin/$BRANCH" | grep -v -x -F "$BOT_EMAIL" | grep -q .; then
+              echo "::notice::$BRANCH has maintainer commits; not overwriting it. Merge or close that PR first."
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: Sync upstream and re-derive the rebrand
         id: sync
+        if: steps.guard.outputs.skip != 'true'
         run: |
           git config user.name "northkey-sync[bot]"
-          git config user.email "northkey-sync@users.noreply.github.com"
+          git config user.email "$BOT_EMAIL"
           before=$(git rev-parse HEAD)
           python northkey/tools/nk.py sync
           python northkey/tools/nk.py verify --rev HEAD
@@ -57,28 +91,42 @@ jobs:
             exit 0
           fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
-          # Upstream changes to CI or to the update/install path get a human review.
           range="$(jq -r .previous northkey/upstream.lock.json)..$(jq -r .commit northkey/upstream.lock.json)"
-          if git diff --name-only "$range" | grep -qE '^(\.github/|hermes_cli/(update_|source_|release_channels|_launchers)|scripts/install)'; then
-            echo "review=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "review=false" >> "$GITHUB_OUTPUT"
-          fi
+          added=$(git diff --name-only --diff-filter=A "$range" -- .github/workflows/ | tr '\n' ' ')
+          echo "new_workflows=$added" >> "$GITHUB_OUTPUT"
+
+      - name: Mirror upstream release tags
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          mapfile -t specs < <(python northkey/tools/nk.py tag-refspecs)
+          if [ "${#specs[@]}" -gt 0 ]; then git push -q origin "${specs[@]}"; fi
+
       - name: Push the sync branch and open a PR
         if: steps.sync.outputs.changed == 'true'
         run: |
           git push --force-with-lease origin "HEAD:refs/heads/$BRANCH"
           lock=northkey/upstream.lock.json
           title="Sync upstream $(jq -r .ref $lock) @ $(jq -r '.commit[:12]' $lock)"
-          body="Automated by northkey-upstream-sync. Merges upstream $(jq -r '.previous[:12]' $lock)..$(jq -r '.commit[:12]' $lock) and re-derives the rebrand from northkey/seams.yaml. Merge with **Create a merge commit** so installs keep fast-forwarding."
+          leaks=$(python northkey/tools/nk.py leaks 2>/dev/null | wc -l)
+          {
+            echo "Automated by northkey-upstream-sync. Merges upstream $(jq -r '.previous[:12]' $lock)..$(jq -r '.commit[:12]' $lock) and re-derives the rebrand from northkey/seams.yaml."
+            echo
+            git log -1 --format=%b | sed -n '/Optional seams skipped/p;/Carried/p'
+            echo "Upstream brand strings on primary surfaces: $leaks (\`nk.py leaks\`)."
+            echo
+            echo "Merge with **Create a merge commit** so installs keep fast-forwarding."
+          } > "$RUNNER_TEMP/body.md"
           pr=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
           if [ -z "$pr" ]; then
-            gh pr create --base main --head "$BRANCH" --title "$title" --body "$body"
+            gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md"
           else
-            gh pr edit "$pr" --title "$title" --body "$body"
+            gh pr edit "$pr" --title "$title" --body-file "$RUNNER_TEMP/body.md"
           fi
-          if [ "${{ steps.sync.outputs.review }}" = "true" ]; then
-            gh pr edit "$BRANCH" --add-label "needs-review" || true
+          if [ -n "${{ steps.sync.outputs.new_workflows }}" ]; then
+            gh pr merge "$BRANCH" --disable-auto >/dev/null 2>&1 || true
+            gh label create needs-review --color B60205 --force >/dev/null 2>&1 || true
+            gh pr edit "$BRANCH" --add-label needs-review
+            gh pr comment "$BRANCH" --body "Upstream added workflow files: ${{ steps.sync.outputs.new_workflows }}. Review them (and disable any publisher in this fork) before merging."
           else
-            gh pr merge "$BRANCH" --auto --merge || echo "Auto-merge unavailable; merge after CI passes."
+            gh pr merge "$BRANCH" --auto --merge
           fi

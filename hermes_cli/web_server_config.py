@@ -128,9 +128,9 @@ _SCHEMA_OVERRIDES: Dict[str, Dict[str, Any]] = {
         "OpenAI transcription model", "whisper-1", "gpt-4o-mini-transcribe", "gpt-4o-transcribe", "gpt-transcribe"
     ),
     "stt.elevenlabs.model_id": _select("ElevenLabs Scribe model", "scribe_v2", "scribe_v1"),
-    "display.skin": _select("CLI visual theme", "default", "ares", "mono", "slate"),
+    "display.skin": _select("CLI visual theme", "northkey", "default", "ares", "mono", "slate"),
     "dashboard.theme": _select(
-        "Web dashboard visual theme", "default", "midnight", "ember", "mono", "cyberpunk", "rose"
+        "Web dashboard visual theme", "northkey", "default", "midnight", "ember", "mono", "cyberpunk", "rose"
     ),
     "display.resume_display": _select("How resumed sessions display history", "minimal", "full", "off"),
     "display.busy_input_mode": _select("Input behavior while agent is running", "interrupt", "queue", "steer"),

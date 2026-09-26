@@ -38,15 +38,9 @@ The `hermes` command is installed alongside `northkey` and does exactly the same
 northkey update
 ```
 
-Northkey tracks upstream Hermes Agent continuously. The maintainers merge the newest upstream several times a day, re-apply the Northkey layer automatically, and publish it to `main`. Your install fast-forwards to it; nothing is ever force-pushed.
+Northkey tracks upstream Hermes Agent continuously. Every six hours the newest upstream is merged, the Northkey layer is re-applied automatically, and the result is published to `main` once its checks pass. Your install fast-forwards to it; nothing is ever force-pushed, and no third-party server is needed to update.
 
-**Coming from Hermes Agent?** Point your existing install at Northkey once, then update as usual:
-
-```bash
-cd ~/.hermes/hermes-agent   # Windows: %LOCALAPPDATA%\hermes\hermes-agent
-git remote set-url origin https://github.com/zerosec-ai/northkey-agent.git
-hermes update --branch main    # one time only; plain `northkey update` from then on
-```
+**Coming from Hermes Agent?** Run the Northkey installer above. It recognises your existing Hermes install, moves it to Northkey and keeps your settings, sessions and skills. From then on, `northkey update` as usual.
 
 ## What is different from Hermes Agent
 

@@ -41,8 +41,8 @@ def _routed_gateway_cfg() -> Optional[Dict[str, Any]]:
 def media_delivery_strict() -> bool:
     cfg = _routed_gateway_cfg()
     if cfg is not None:
-        return bool(cfg.get("strict", False))
-    return os.environ.get(_FLAG_ENVS[0][1], "0").strip().lower() in _TRUTHY
+        return bool(cfg.get("strict", True))  # northkey: strict unless gateway.strict: false
+    return os.environ.get(_FLAG_ENVS[0][1], "1").strip().lower() in _TRUTHY  # northkey
 
 
 def media_delivery_allow_dirs() -> str:

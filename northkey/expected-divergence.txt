@@ -1,0 +1,42 @@
+# Upstream tests that pin a value Northkey changes on purpose.
+#
+# Northkey CI deselects these node-id prefixes (pytest --deselect); the contracts
+# behind them are re-asserted with Northkey's values in tests/northkey/. Measured
+# on 2026-09-26 by running every upstream test file that touches a seam module (635
+# files) on the fork and on pristine upstream at the same commit: exactly these
+# fail only on the fork.
+#
+# Format: <node-id prefix>  # <why> -> <where Northkey covers it>
+
+# Update channels: stable/canary resolve to the fork's main branch, offline, instead
+# of Nous's promoted release pointers.  -> tests/northkey/test_update_delivery.py
+tests/hermes_cli/test_source_release_channels.py::test_missing_pointers_fall_back_only_to_published_releases
+tests/hermes_cli/test_source_release_channels.py::test_origin_tag_cannot_substitute_a_fork_commit
+tests/hermes_cli/test_source_release_channels.py::test_source_check_and_apply_land_on_selected_release
+tests/hermes_cli/test_source_release_channels.py::test_stable_resolution_uses_promoted_pointer_not_highest_tag
+
+# auth.adopt_external_logins is false: Claude Code / Codex CLI logins are not borrowed.
+#   -> tests/northkey/test_brand_surfaces.py::test_secure_defaults
+tests/agent/test_anthropic_adapter.py::TestReadClaudeCodeCredentials::test_reads_valid_credentials
+tests/agent/test_anthropic_adapter.py::TestResolveAnthropicToken::test_falls_back_to_claude_code_credentials
+tests/agent/test_anthropic_adapter.py::TestResolveAnthropicToken::test_prefers_refreshable_claude_code_credentials_over_static_anthropic_token
+tests/agent/test_anthropic_adapter.py::TestResolveWithRefresh::test_auto_refresh_on_expired_creds
+tests/agent/test_anthropic_adapter.py::TestResolveWithRefresh::test_static_env_oauth_token_does_not_block_refreshable_claude_creds
+tests/agent/test_anthropic_adapter.py::TestRunOauthSetupToken::test_returns_token_from_credential_files
+tests/hermes_cli/test_oauth_status_pool_observation.py::test_status_snapshot_never_adopts_codex_cli_tokens
+
+# Default approval mode is `manual`, not `smart`.
+#   -> tests/northkey/test_divergence_contracts.py (same parity check, Northkey default)
+tests/tools/test_approval_mode_parity.py::test_mode_and_timeout_parity_across_surfaces[unset-defaults]
+tests/tui_gateway/test_tui_gateway_server.py::test_config_get_approval_mode_uses_smart_default_when_key_is_missing
+
+# Product name in `--version` and the /history speaker label.
+#   -> tests/northkey/test_brand_surfaces.py
+tests/hermes_cli/test_startup_fast_guards.py::test_fast_version_parity
+tests/hermes_cli/test_timestamps_command.py::test_history_shows_timestamp_for_stored_turns
+
+# The dashboard also lists the themes bundled in northkey/dashboard-themes/.
+#   -> tests/northkey/test_brand_surfaces.py::test_dashboard_opens_in_the_northkey_theme
+tests/hermes_cli/test_web_server.py::TestDiscoverUserThemes::test_ignores_transient_profile_override
+tests/hermes_cli/test_web_server.py::TestDiscoverUserThemes::test_loads_and_normalises_yaml
+tests/hermes_cli/test_web_server.py::TestDiscoverUserThemes::test_returns_empty_when_dir_missing

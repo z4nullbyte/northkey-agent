@@ -95,9 +95,9 @@ fail() { STAGE_REASON="$1"; log_error "$1"; exit 1; }
 print_banner() {
     printf '\n%s%s' "$C_MAGENTA" "$C_BOLD"
     printf '%s\n' "┌─────────────────────────────────────────────────────────┐"
-    printf '%s\n' "│             ☤ Hermes Agent Installer                    │"
+    printf '%s\n' "│             ✦ Northkey Installer                        │"
     printf '%s\n' "├─────────────────────────────────────────────────────────┤"
-    printf '%s\n' "│  An open source AI agent by Nous Research.              │"
+    printf '%s\n' "│  Built on Hermes Agent by Nous Research (MIT).          │"
     printf '%s\n' "└─────────────────────────────────────────────────────────┘"
     printf '%s\n' "$C_NC"
 }
@@ -431,7 +431,7 @@ stage_repository() {
         log "Updating $INSTALL_DIR ($BRANCH)"
         # An explicit HERMES_REPO_URL names the source for reruns too, not
         # just the first clone.
-        if [ -n "${HERMES_REPO_URL:-}" ]; then
+        if [ -n "${HERMES_REPO_URL:-}" ] || git -C "$INSTALL_DIR" remote get-url origin 2>/dev/null | grep -qiE 'github\.com[:/]+NousResearch/hermes-agent(\.git)?/?$'; then  # northkey: move Hermes checkouts to the fork
             git -C "$INSTALL_DIR" remote set-url origin "$REPO_URL" || fail "cannot point origin at $REPO_URL"
         fi
         run_logged "Fetching origin/$BRANCH" git -C "$INSTALL_DIR" fetch origin "$BRANCH" || fail "git fetch failed"
@@ -540,7 +540,7 @@ stage_repository() {
             fail "cannot publish cloned checkout"
         fi
         rmdir "$staged"
-        log_success "Hermes Agent cloned"
+        log_success "Northkey cloned"
     fi
     if [ -n "$INSTALL_COMMIT" ]; then
         # A pin must come from the branch being installed: the complete
@@ -727,7 +727,7 @@ stage_complete() {
             "$commit" "$BRANCH" "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" > "$INSTALL_DIR/.hermes-bootstrap-complete.tmp"
         mv -f "$INSTALL_DIR/.hermes-bootstrap-complete.tmp" "$INSTALL_DIR/.hermes-bootstrap-complete"
     fi
-    log_success "Hermes Agent install complete. Run: hermes"
+    log_success "Northkey install complete. Run: northkey"
 }
 
 print_path_reload_hint() {

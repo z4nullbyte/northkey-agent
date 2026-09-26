@@ -23,6 +23,6 @@ Only the current `main` branch receives fixes. Installs track `main` and update 
 - Messaging gateways only send files from allow-listed locations (`gateway.strict: true`).
 - No keyless third-party web search and no borrowing of other tools' logins.
 - Skills written by the agent are security-scanned.
-- Installs update only from this repository's `main`; channel records are served from this repository and pinned to it.
+- Installs update only from this repository's `main`: the built-in update channels resolve to it directly, and no upstream server is consulted.
 
 The operating system remains the real security boundary for an agent that can run commands. For shared or server machines, run Northkey in a container or a dedicated account.

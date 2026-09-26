@@ -4,10 +4,10 @@ Northkey is a rebranded distribution of [Hermes Agent](https://github.com/NousRe
 
 ## สรุปภาษาไทย (Quick guide)
 
-- **อัปเดตจาก upstream (Hermes) ได้ตลอด:** รัน `python northkey/tools/nk.py sync`. คำสั่งนี้ merge โค้ดล่าสุดของ Hermes แล้วใส่แบรนด์ Northkey กลับเข้าไปใหม่อัตโนมัติ จึงไม่มี merge conflict. บน GitHub มี workflow `northkey-upstream-sync` รันให้ทุก 6 ชั่วโมง
-- **ผู้ใช้อัปเดตได้ตามปกติ:** ผู้ใช้พิมพ์ `northkey update` (หรือ `hermes update`) แล้วจะ fast-forward ไปยัง `main` ของ Northkey ได้ทุกครั้ง เพราะ fork นี้ไม่เคย force-push และมี channel record ของตัวเอง
-- **ตรวจความถูกต้อง:** `python northkey/tools/nk.py verify` ยืนยันว่าโค้ด = upstream + ไฟล์ของ Northkey + seams เท่านั้น
-- **ถ้า sync ล้ม:** แปลว่า upstream แก้บรรทัดที่เราเคยแก้ ให้แก้ `find:` ใน `northkey/seams.yaml` ให้ตรงกับโค้ดใหม่ แล้วรัน `sync` อีกครั้ง (การแก้นี้จะรวมอยู่ใน sync commit เดียวกัน)
+- **อัปเดตจาก upstream (Hermes) ได้ตลอด:** รัน `python northkey/tools/nk.py sync`. คำสั่งนี้ merge โค้ดล่าสุดของ Hermes แล้วใส่แบรนด์ Northkey กลับเข้าไปใหม่อัตโนมัติ จึงไม่มี merge conflict. บน GitHub มี workflow `northkey-upstream-sync` รันให้ทุก 6 ชั่วโมง และ merge เองเมื่อ CI ผ่าน
+- **ผู้ใช้อัปเดตได้ตามปกติ:** ผู้ใช้พิมพ์ `northkey update` (หรือ `hermes update`) แล้วจะ fast-forward ไปยัง `main` ของ Northkey เสมอ โดยไม่ต้องพึ่ง server ของ Nous (ช่อง main/stable/canary ชี้ไปที่ branch ของ fork โดยตรง) และ fork นี้ไม่เคย force-push
+- **ตรวจความถูกต้อง:** `python northkey/tools/nk.py verify` ยืนยันว่าโค้ด = upstream + ไฟล์ของ Northkey + seams เท่านั้น (เทียบทุกไฟล์ ทุก mode)
+- **ถ้า sync หยุด:** แปลว่า upstream แก้บรรทัดที่ seam แบบ *required* ใช้อยู่ ให้แก้ `find:` ใน `northkey/seams.yaml` แล้วรัน `sync` อีกครั้ง (การแก้จะรวมอยู่ใน sync commit เดียวกัน). Seam ด้านความสวยงาม (`required: false`) จะไม่หยุด sync แต่ถูกข้ามและแจ้งใน commit
 - **เปลี่ยนชื่อ/สี/ที่อยู่ repo:** แก้ `northkey/brand.yaml` แล้วรัน `nk.py render`
 - **ดีไซน์:** `northkey/skins/northkey.yaml` (terminal/TUI/desktop) และ `northkey/dashboard-themes/northkey.yaml` (web dashboard)
 
@@ -20,69 +20,87 @@ upstream commit (northkey/upstream.lock.json)
   + seams         literal find → replace edits in upstream files (northkey/seams.yaml)
 ```
 
-`nk.py verify` proves this holds; CI runs it on every push. Because seam files are always re-derived from **fresh upstream text**, syncing never produces merge conflicts. When upstream edits a line a seam depends on, the sync stops with the seam's id and leaves the tree untouched.
+`nk.py verify` compares the whole tree (every path, content and file mode) against that recipe; CI runs it on every push and it is a required check. Because seam files are always re-derived from **fresh upstream text**, syncing never produces merge conflicts.
 
-Never rename Python modules, the `hermes` command, `HERMES_*` variables or `~/.hermes`: the updater's compatibility contract and existing installs depend on them. Branding is user-visible surface only.
+Seams come in two kinds:
+
+- **required** (update path, installers, security defaults, identity, attribution): a moved anchor stops the sync with the seam's id, so these can never silently regress.
+- **optional** (`required: false`, cosmetic surfaces): a moved anchor skips that seam, the sync continues, and the commit message lists what was skipped. Cosmetics can never hold back an update.
+
+Never rename Python modules, the `hermes` command, `HERMES_*` variables or `~/.hermes`: the updater's compatibility contract and existing installs depend on them. `northkey` is an alias that runs the same `hermes` launcher, so every process keeps one identity.
 
 ## Commands
 
 ```bash
-python northkey/tools/nk.py status        # base commit and how far upstream has moved
-python northkey/tools/nk.py check-next    # would every seam apply to upstream right now?
-python northkey/tools/nk.py sync          # merge newest upstream, re-derive the brand, commit
-python northkey/tools/nk.py verify        # prove the invariant (add --rev HEAD for a commit)
+python northkey/tools/nk.py status        # fetches upstream; base commit and how far upstream has moved
+python northkey/tools/nk.py check-next    # would every required seam apply to upstream right now?
+python northkey/tools/nk.py sync          # merge newest upstream, re-derive the brand, fast-forward main
+python northkey/tools/nk.py verify        # prove the invariant (--rev <commit> checks a commit with its own manifest)
 python northkey/tools/nk.py render        # re-apply seams after editing brand.yaml / seams.yaml
+python northkey/tools/nk.py leaks         # upstream brand strings still visible on primary surfaces
+python northkey/tools/nk.py pins          # Northkey workflow action pins upstream has moved past
 ```
 
-`sync` fetches `upstream` (NousResearch/hermes-agent), records a real merge commit (upstream history is kept, nothing is rewritten), rebuilds every non-owned path from the new upstream tree, re-renders the seams, verifies, and commits. It refuses to run with uncommitted edits outside owned paths, and carries uncommitted edits *inside* owned paths (typically a fixed anchor in `seams.yaml`) into the sync commit.
+How `sync` works: it fetches `upstream` (NousResearch/hermes-agent; upstream tags go to `refs/upstream-tags/`, never the fork's tags), builds the merge commit in a private index (upstream tree + owned files + rendered seams), verifies that commit, and only then fast-forwards `main`. Nothing in your working tree changes until a verified commit exists, and no merge state is ever left behind. It refuses to run with uncommitted edits outside owned paths or with committed drift (edits to upstream files outside the seams; `--discard-drift` drops them deliberately). Uncommitted edits to tracked owned files, typically a fixed anchor in `seams.yaml`, ride along in the sync commit; untracked files are never committed.
 
-### When a sync fails
+### When a sync stops
 
 ```
-nk: seam brand-banner: expected 2 match(es) in hermes_cli/banner.py, found 1
+nk: seam update-channel-authority: expected 1 match(es) in hermes_cli/source_releases.py, found 0
 ```
 
-1. Look at what upstream did: `git log -p upstream/main -- hermes_cli/banner.py`.
-2. Update that seam's `find:` (and `count:`) in `northkey/seams.yaml`.
+1. See what upstream did: `git log -p upstream/main -- hermes_cli/source_releases.py`.
+2. Update that seam's `find:` (and `count:`) in `northkey/seams.yaml`; a seam whose code moved to another file needs its `file:` changed.
 3. Run `nk.py sync` again. The fix rides along in the sync commit.
 
-A seam whose code moved to another file needs its `file:` changed. `tests/northkey/test_update_delivery.py` additionally fails if an upstream refactor re-introduces a Nous update endpoint through a clean merge.
+`tests/northkey/test_update_delivery.py` additionally fails if an upstream refactor re-introduces a Nous update endpoint through a clean merge.
 
 ### Adding a seam
 
-Prefer, in order: a setting in `brand.yaml` rendered into an existing seam; a fork-owned file; a new seam. Keep anchors to one line where possible; for multi-line anchors use double-quoted YAML with `\n` so indentation is exact. Then `nk.py render && nk.py verify` and add a test under `tests/northkey/`.
+Prefer, in order: a value in `brand.yaml` rendered into an existing seam; a fork-owned file; a new seam. Keep anchors to one line where possible; multi-line anchors use double-quoted YAML with `\n` so indentation is exact. Mark cosmetic seams `required: false`. Then `nk.py render && nk.py verify` and add a test under `tests/northkey/`.
 
 ## How updates reach users
 
-1. Upstream → fork: `northkey-upstream-sync` (every 6 h) runs `nk.py sync` and opens a PR. PR CI (`northkey-ci`) verifies and tests it. The PR auto-merges unless upstream touched CI, the updater or the installers (labelled `needs-review`). Always merge with **Create a merge commit**.
-2. Fork → installs: `northkey update` resolves the `main` channel from `northkey/release-archive/releases/channels/main.json` (served from this repo; see `channels.base_url` in `brand.yaml`). The record names this repository, so the updater accepts it and fast-forwards the install to `origin/main`. Upstream's own records name NousResearch and are rejected by design, which is why the channel base is a seam.
-3. Installs never add Nous as a remote: the fork's URLs are the official origin (`update-official-origin` seam).
+1. **Upstream → fork.** `northkey-upstream-sync` (every 6 h) runs `nk.py sync`, mirrors upstream release tags, and opens a PR. Northkey CI verifies and tests it; the PR auto-merges with a merge commit. Only a sync that *adds* upstream workflow files waits for a human (label `needs-review`), because a new upstream publisher could otherwise run in the fork.
+2. **Fork → installs.** `northkey update` resolves the `main`, `stable` and `canary` channels to the fork's `main` branch directly (`update-channel-authority` seam): no release archive is consulted, so no Nous server and no rate-limited host can block an update. A `stable`/`canary` subscription carried over from Hermes is reported as retired and moved to `main` after the next successful update. The install then fast-forwards to `origin/main`.
+3. **Installs never follow Nous.** The fork's URLs are the official origin (`update-official-origin`), `update --check` compares against origin rather than any `upstream` remote, and every recovery hint reinstalls Northkey.
 
-Because `main` only ever moves forward through merges, installs always fast-forward. **Never force-push `main`**; `github-setup.sh` enforces this with branch protection.
-
-Tags: `hermes update` derives versions from upstream tags, so mirror them (`git push origin --tags` after a sync). Never create bare `vX.Y.Z` tags in the fork; if you tag Northkey releases, use a different prefix such as `northkey-2026.09.27`.
+Because `main` only moves forward through merges, installs always fast-forward. **Never force-push `main`**; `github-setup.sh` enforces this with branch protection. Never create bare `vX.Y.Z` tags in the fork (the version code takes the highest one); if you tag Northkey releases, use a prefix such as `northkey-2026.09.27`.
 
 ### Moving an existing Hermes install to Northkey
 
-The first update runs the *old* Hermes updater, which still asks Nous's channel archive, so cross over once with `--branch`:
+Re-run the Northkey installer. It recognises a checkout whose origin is NousResearch/hermes-agent, re-points it at Northkey and updates it (the `installer-origin-*` seams):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/scripts/install.sh | bash
+# Windows PowerShell:
+iex (irm https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/scripts/install.ps1)
+```
+
+Manual alternative (the first update still runs Hermes' own updater, hence `--branch main --yes`):
 
 ```bash
 cd ~/.hermes/hermes-agent        # Windows: %LOCALAPPDATA%\hermes\hermes-agent
 git remote set-url origin https://github.com/zerosec-ai/northkey-agent.git
-hermes update --branch main
+hermes update --branch main --yes
+git remote remove upstream 2>/dev/null || true
 ```
 
-Re-running the Northkey installer (which sets `origin`) works too.
+An untouched SOUL.md seeded by Hermes is upgraded to the Northkey identity automatically; a customised one is left alone.
 
 ## Publishing checklist
 
 1. Confirm `repo.owner` / `repo.name` in `brand.yaml` (currently `zerosec-ai/northkey-agent`), run `nk.py render`, and update the URLs in `.github/README.md` (a test checks they match).
-2. Create the GitHub repository **public** (installs and the channel record are fetched anonymously), then push: `git push origin main && git push origin --tags`.
-3. `bash northkey/tools/github-setup.sh`: disables upstream's release/publish workflows, enables private vulnerability reporting, protects `main`, and allows merge commits only.
-4. Add the `NORTHKEY_SYNC_TOKEN` secret (fine-grained token: Contents, Pull requests, Workflows = read/write).
-5. Close Dependabot PRs: upstream's action bumps arrive through the sync, and `verify` rejects edits outside seams anyway.
+2. Create the GitHub repository **public** (installs clone it anonymously), then push: `git push origin main` and mirror upstream tags: `git push origin $(python northkey/tools/nk.py tag-refspecs)`.
+3. `bash northkey/tools/github-setup.sh zerosec-ai/northkey-agent`: disables upstream's publishers, creates the `upstream-sync` environment, makes the default workflow token read-only, protects `main` (both CI jobs required), allows merge commits only, enables private vulnerability reporting.
+4. `gh secret set NORTHKEY_SYNC_TOKEN --env upstream-sync --repo zerosec-ai/northkey-agent` with a fine-grained token (Contents, Pull requests, Workflows, Actions = read/write).
+5. Close Dependabot PRs: upstream's action bumps arrive through the sync, and `nk.py pins` (in the CI report) tells you when the fork's own workflows should follow.
 
-The desktop app, Docker image, Nix flake and Termux packages keep upstream's identity and signing and are not published by Northkey yet. Shipping them needs Northkey's own signing identities (Apple Developer ID, Windows code-signing, Store identity) and release storage.
+The desktop app, Docker image, Nix flake and Termux packages keep upstream's identity and signing and are not published by Northkey yet. Shipping them needs Northkey's own signing identities (Apple Developer ID, Windows code-signing, Store identity) and release storage, plus seams for their download URLs (`nk.py leaks` and `test_update_delivery.py` list where).
+
+## Upstream tests Northkey changes on purpose
+
+`northkey/expected-divergence.txt` lists upstream test ids that pin a value Northkey changes deliberately (for example the `smart` approval default or Nous channel fixtures). CI deselects exactly those ids and re-asserts the contracts with Northkey's values in `tests/northkey/`. A test checks that every listed id still exists.
 
 ## Design system
 

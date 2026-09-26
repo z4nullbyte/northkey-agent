@@ -171,9 +171,9 @@ _BUSY_MODE_SHORT = {
     "queue": "queues for next turn", "steer": "steers into current run (after next tool call)",
     "interrupt": "redirects current run immediately"}
 _BUSY_MODE_LONG = {
-    "queue": "Enter will queue follow-up input while Hermes is busy.",
+    "queue": "Enter will queue follow-up input while Northkey is busy.",
     "steer": "Enter will steer your message into the current run (after the next tool call).",
-    "interrupt": "Enter will redirect the current run while Hermes is busy; /stop still cancels it.",
+    "interrupt": "Enter will redirect the current run while Northkey is busy; /stop still cancels it.",
 }
 
 # /fast argument -> (service_tier value, persisted config value)
@@ -2700,18 +2700,18 @@ class CLICommandsMixin:
         prompt_toolkit restores terminal modes), False when cancelled."""
         from hermes_cli.config import is_managed, format_managed_message
         if is_managed():
-            print(f"  ✗ {format_managed_message('update Hermes Agent')}")
+            print(f"  ✗ {format_managed_message('update Northkey')}")
             return False
         # prompt_toolkit-native modal: renders above the composer, no raw input() races.
-        choices = [("once", "Update Now", "exit the current session and update Hermes Agent"),
+        choices = [("once", "Update Now", "exit the current session and update Northkey"),
                    ("cancel", "Cancel", "keep the current session")]
         raw = self._prompt_text_input_modal(
-            title="☤  Update Hermes Agent",
+            title="✦  Update Northkey",
             detail="This will exit the current session and run `hermes update`.", choices=choices)
         if raw is None or self._normalize_slash_confirm_choice(raw, choices) != "once":
             print("  🟡 /update cancelled.")
             return False
-        _say_block("  ☤ Launching update...")
+        _say_block("  ✦ Launching update...")
         # run() execs this on the main thread after prompt_toolkit restores terminal modes;
         # relaunching from this daemon thread would skip cleanup (POSIX) / only end the thread (Windows).
         self._pending_relaunch = ["update"]

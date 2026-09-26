@@ -1,9 +1,10 @@
-"""Northkey installs keep updating after the rebrand.
+"""Northkey installs keep updating after the rebrand, only ever from the fork.
 
-`hermes update` resolves its channel from `_PUBLIC_BASE` before any git work and
-rejects a record whose repository is not the install's origin. These tests pin
-the Northkey side of that contract: the fork publishes its own record, installs
-resolve `main` to the fork's branch, and no update path points back at Nous.
+`hermes update` resolves its channel before any git work. Northkey resolves the
+built-in channels (main, stable, canary) to the fork's branch without a network
+round-trip, so installs update even when no channel record is reachable, and
+stable/canary subscriptions carried over from Hermes migrate to `main` by
+themselves. No update path may point back at Nous.
 """
 
 import io
@@ -16,7 +17,7 @@ import pytest
 
 from hermes_cli import release_channels, source_releases
 from hermes_cli.update_cmd_git import OFFICIAL_REPO_URL, _is_fork
-from tests.northkey._brand import BRAND, GIT_URL, RECORD, ROOT, SLUG
+from tests.northkey._brand import BRAND, GIT_URL, ROOT, SLUG
 
 
 class _Response(io.BytesIO):
@@ -36,9 +37,10 @@ class _Response(io.BytesIO):
 
 @pytest.fixture
 def archive(monkeypatch):
-    """Serve channel objects from a dict; everything else is a 404. Records requested URLs."""
+    """A fake channel archive: serves `served` objects, 404 for the rest (or `status`)."""
     served: dict[str, bytes] = {}
     requested: list[str] = []
+    state = {"status": 404}
 
     def open_(request, timeout=30):
         url = request.full_url
@@ -46,13 +48,21 @@ def archive(monkeypatch):
         for key, body in served.items():
             if url == f"{source_releases._PUBLIC_BASE}/{key}":
                 return _Response(url, body)
-        raise HTTPError(url, 404, "Not Found", {}, None)
+        raise HTTPError(url, state["status"], "archive says no", {}, None)
 
     class _Opener:
         open = staticmethod(open_)
 
     monkeypatch.setattr(release_channels, "build_opener", lambda *handlers: _Opener())
-    return served, requested
+    return served, requested, state
+
+
+def _record(name: str, repository: str) -> bytes:
+    return json.dumps({
+        "schema": 1, "name": name, "repository": repository, "policy": "source-branch", "state": "active",
+        "revision": 1, "nextSequence": 1, "identity": None, "head": None,
+        "delivery": {"kind": "source-branch", "branch": "main"},
+    }).encode()
 
 
 def test_channel_archive_is_the_forks_own():
@@ -61,34 +71,23 @@ def test_channel_archive_is_the_forks_own():
     release_channels.public_base(source_releases._PUBLIC_BASE)  # https, no query, no redirects
 
 
-def test_published_main_record_is_valid_for_the_fork():
-    record = json.loads(RECORD.read_text(encoding="utf-8"))
-    validated = release_channels.validate_record(record, name="main", repository=SLUG)
-    assert validated["policy"] == "source-branch"
-    assert validated["delivery"] == {"kind": "source-branch", "branch": BRAND["repo"]["branch"]}
-
-
-def test_update_resolves_main_to_the_fork_branch(archive):
-    served, requested = archive
-    served["releases/channels/main.json"] = RECORD.read_bytes()
-    target = source_releases.resolve_source_target("main", repository=SLUG)
-    assert (target.channel, target.repository, target.branch, target.commit) == (
-        "main", SLUG, BRAND["repo"]["branch"], None)
-    assert requested == [f"{BRAND['channels']['base_url']}/releases/channels/main.json"]
-
-
-def test_update_still_follows_main_while_no_record_is_published(archive):
-    target = source_releases.resolve_source_target("main", repository=SLUG)
-    assert (target.branch, target.repository) == ("main", SLUG)
+@pytest.mark.parametrize("channel", ["main", "stable", "canary"])
+def test_builtin_channels_follow_the_fork_branch_offline(archive, channel):
+    _, requested, state = archive
+    state["status"] = 429  # even a rate-limited or unreachable archive cannot block an update
+    target = source_releases.resolve_source_target(channel, repository=SLUG)
+    assert (target.channel, target.branch, target.commit, target.repository) == (
+        "main", BRAND["repo"]["branch"], None, SLUG)
+    assert target.retired is (channel != "main")  # stable/canary subscriptions migrate to main
+    assert requested == []
 
 
 def test_an_upstream_record_cannot_steer_a_northkey_install(archive):
-    served, _ = archive
-    upstream_record = json.loads(RECORD.read_text(encoding="utf-8"))
-    upstream_record["repository"] = "NousResearch/hermes-agent"
-    served["releases/channels/main.json"] = json.dumps(upstream_record).encode()
+    served, requested, _ = archive
+    served["releases/channels/beta.json"] = _record("beta", "NousResearch/hermes-agent")
     with pytest.raises((release_channels.ChannelError, ValueError)):
-        source_releases.resolve_source_target("main", repository=SLUG)
+        source_releases.resolve_source_target("beta", repository=SLUG)
+    assert requested == [f"{BRAND['channels']['base_url']}/releases/channels/beta.json"]
 
 
 @pytest.mark.parametrize("url", [GIT_URL, GIT_URL[:-4], f"git@github.com:{SLUG}.git", f"git@github.com:{SLUG}"])
@@ -107,30 +106,43 @@ def test_source_repository_follows_a_northkey_origin(tmp_path):
     assert source_releases.source_repository(["git"], tmp_path) == SLUG
 
 
-# Update-path files and the only Nous references allowed to remain in them.
+# Update and install paths, and the only Nous references allowed to remain in them.
 _UPDATE_PATH = [
     "hermes_cli/source_releases.py", "hermes_cli/source_check.py", "hermes_cli/release_channels.py",
     "hermes_cli/update_channel.py", "hermes_cli/_launchers.py", "hermes_cli/_install_repair.py",
-    "hermes_cli/uninstall.py", "hermes_cli/banner.py", "scripts/install.sh", "scripts/install.ps1",
-    "scripts/install.cmd",
+    "hermes_cli/uninstall.py", "hermes_cli/banner.py", "hermes_cli/debug.py", "gateway/slash_commands.py",
+    "scripts/install.sh", "scripts/install.ps1", "scripts/install.cmd",
 ]
-_NOUS_AUTHORITY = re.compile(r"hermes-assets\.nousresearch\.com(?!/upstream/sha256/)|NousResearch/hermes-agent"
-                             r"|hermes-agent\.nousresearch\.com/install")
+_NOUS_AUTHORITY = re.compile(
+    r"hermes-assets\.nousresearch\.com(?!/upstream/sha256/)"  # content-addressed mirrors are fine
+    r"|NousResearch/hermes-agent"
+    r"|hermes-agent\.nousresearch\.com(?!/docs)")  # upstream docs stay the feature reference
 _ALLOWED = [
     # Nous URLs stay recognized as official too (a Hermes checkout is never called a fork).
     re.compile(r'^\s*"(https://github\.com/|git@github\.com:)NousResearch/hermes-agent(\.git)?",$'),
     # Docstring prose.
     re.compile(r"^\s*Release URL always points at the canonical NousResearch/hermes-agent repo"),
+    # The installers move Hermes checkouts to the fork by recognising their Nous origin.
+    re.compile(r"northkey: move Hermes checkouts to the fork"),
 ]
 
 
 def test_no_update_path_points_back_at_nous():
     """Catches upstream refactors that re-introduce a Nous endpoint through a clean merge."""
     paths = sorted({*_UPDATE_PATH, *(p.relative_to(ROOT).as_posix()
-                                     for p in (ROOT / "hermes_cli").glob("update_*.py"))})
+                                     for pattern in ("hermes_cli/update_*.py", "pm/*.py")
+                                     for p in ROOT.glob(pattern))})
     offenders = []
     for rel in paths:
         for number, line in enumerate((ROOT / rel).read_text(encoding="utf-8").splitlines(), 1):
             if _NOUS_AUTHORITY.search(line) and not any(rule.search(line) for rule in _ALLOWED):
                 offenders.append(f"{rel}:{number}: {line.strip()}")
     assert not offenders, "update path points at Nous; add a seam:\n" + "\n".join(offenders)
+
+
+@pytest.mark.parametrize("script", ["scripts/install.sh", "scripts/install.ps1"])
+def test_installer_rerun_moves_hermes_checkouts_to_the_fork(script):
+    """Re-running the Northkey installer over a Hermes checkout re-points origin to the fork."""
+    text = (ROOT / script).read_text(encoding="utf-8")
+    assert "northkey: move Hermes checkouts to the fork" in text
+    assert GIT_URL in text

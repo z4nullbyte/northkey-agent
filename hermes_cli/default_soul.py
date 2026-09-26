@@ -51,6 +51,9 @@ _LEGACY_TEMPLATE_SOULS = (
     # ASCII-dashed variant seeded by scripts/install.ps1 (must stay pure ASCII, see
     # tests/scripts/install/test_install_ps1_ascii_only.py); upgrading converges Windows installs on the em-dash text.
     DEFAULT_SOUL_MD.replace("\u2014", "--"),
+    # northkey: upstream Hermes' seeded default, so installs migrated from Hermes upgrade too.
+    DEFAULT_SOUL_MD.replace("You are Northkey, built on Hermes Agent by Nous Research.", "You are Hermes Agent, built by Nous Research."),
+    DEFAULT_SOUL_MD.replace("You are Northkey, built on Hermes Agent by Nous Research.", "You are Hermes Agent, built by Nous Research.").replace("\u2014", "--"),
 )
 
 

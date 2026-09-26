@@ -293,7 +293,7 @@ class CLISessionMixin:
         except Exception:
             ctx_label = None
 
-        lines = ["Hermes CLI Status", "", *status_lines(fields, "session_id", "path", "title", "model")]
+        lines = ["Northkey CLI Status", "", *status_lines(fields, "session_id", "path", "title", "model")]
         try:
             from agent.i18n import t
             from hermes_cli.auth import resolve_provider
@@ -413,7 +413,7 @@ class CLISessionMixin:
                 _cli_visible_print(f"    {preview}{suffix}")
                 continue
 
-            _cli_visible_print(f"\n  [Hermes #{visible_index}]{_ts_suffix(msg)}")
+            _cli_visible_print(f"\n  [Northkey #{visible_index}]{_ts_suffix(msg)}")
             n_calls = len(msg.get("tool_calls") or [])
             if not content_text:
                 suffix = ""

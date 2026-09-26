@@ -1,45 +1,52 @@
 #!/usr/bin/env bash
-# One-time GitHub setup for the Northkey fork repository.
+# One-time GitHub setup for the Northkey fork repository. Safe to re-run.
 #
-#   gh auth login                 # an account with admin rights on the fork
-#   bash northkey/tools/github-setup.sh [owner/repo]
+#   gh auth login                                   # an account with admin rights on the fork
+#   bash northkey/tools/github-setup.sh [owner/repo]   # default: repo.owner/repo.name in brand.yaml
 #
-# Disables upstream's release/publish workflows (they would try to publish Nous
-# artifacts from the fork), turns on private vulnerability reporting, and protects
-# `main` against force-pushes and deletion. Safe to re-run.
+# - disables upstream's release/publish workflows (they would publish Nous artifacts)
+# - creates the `upstream-sync` environment that holds the sync token (protected branches only)
+# - makes the default workflow token read-only
+# - protects `main`: no force-push, no deletion, both Northkey CI jobs required
+# - allows merge commits only (squash/rebase would break installs' fast-forwards), auto-merge on
+# - enables private vulnerability reporting and creates the `needs-review` label
 set -euo pipefail
 
-repo="${1:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+brand_value() {  # brand_value <section> <key>: a two-level lookup in northkey/brand.yaml
+  awk -v s="$1:" -v k="$2:" '$1 == s {f = 1; next} f && /^[^ #]/ {f = 0} f && $1 == k {print $2; exit}' \
+    "$here/northkey/brand.yaml"
+}
+repo="${1:-$(brand_value repo owner)/$(brand_value repo name)}"
+[[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "usage: $0 owner/repo" >&2; exit 2; }
+gh repo view "$repo" --json nameWithOwner >/dev/null || { echo "cannot access $repo with gh" >&2; exit 1; }
 echo "Configuring $repo"
 
-# Upstream workflows that publish, sign, or run on a schedule against Nous resources.
-upstream_publishers=(
-  canary-release.yml
-  stable-release.yml
-  stable-release-publication.yml
-  desktop-bundled-release.yml
-  bootstrap-installer-build.yml
-  archive-inputs.yml
-  pm-bundle.yml
-  install-e2e.yml
-  install-e2e-run.yml
-  install-e2e-macos-run.yml
-  install-e2e-windows-run.yml
-  termux-verify.yml
-  nix.yml
-)
-for wf in "${upstream_publishers[@]}"; do
+for wf in canary-release.yml stable-release.yml stable-release-publication.yml desktop-bundled-release.yml \
+          bootstrap-installer-build.yml archive-inputs.yml pm-bundle.yml install-e2e.yml install-e2e-run.yml \
+          install-e2e-macos-run.yml install-e2e-windows-run.yml termux-verify.yml nix.yml; do
   if gh workflow view "$wf" --repo "$repo" >/dev/null 2>&1; then
-    gh workflow disable "$wf" --repo "$repo" && echo "  disabled $wf"
+    gh workflow disable "$wf" --repo "$repo" >/dev/null 2>&1 || true
+    echo "  disabled $wf"
   fi
 done
 
-gh api -X PUT "repos/$repo/private-vulnerability-reporting" >/dev/null && echo "  private vulnerability reporting on"
+gh api -X PUT "repos/$repo/environments/upstream-sync" --input - >/dev/null <<'JSON'
+{"deployment_branch_policy": {"protected_branches": true, "custom_branch_policies": false}}
+JSON
+echo "  environment upstream-sync (protected branches only)"
 
-# Protect main: installs fast-forward from it, so it must never be rewritten.
+gh api -X PUT "repos/$repo/actions/permissions/workflow" \
+  -f default_workflow_permissions=read -F can_approve_pull_request_reviews=false >/dev/null
+echo "  default workflow token: read-only"
+
+# 15368 is the GitHub Actions app: only checks reported by Actions can satisfy these.
 gh api -X PUT "repos/$repo/branches/main/protection" --input - >/dev/null <<'JSON'
 {
-  "required_status_checks": {"strict": false, "contexts": ["Fork invariant (upstream + owned paths + seams)"]},
+  "required_status_checks": {"strict": false, "checks": [
+    {"context": "Fork invariant (upstream + owned paths + seams)", "app_id": 15368},
+    {"context": "Northkey tests + upstream brand-sensitive suites", "app_id": 15368}
+  ]},
   "enforce_admins": true,
   "required_pull_request_reviews": null,
   "restrictions": null,
@@ -47,11 +54,19 @@ gh api -X PUT "repos/$repo/branches/main/protection" --input - >/dev/null <<'JSO
   "allow_deletions": false
 }
 JSON
-echo "  main protected (no force-push, no deletion, invariant check required)"
+echo "  main protected (no force-push, no deletion, both CI jobs required)"
 
-# Merge commits only: squash/rebase would rewrite the sync merge and break fast-forwards.
-gh api -X PATCH "repos/$repo" -f allow_merge_commit=true -F allow_squash_merge=false \
-  -F allow_rebase_merge=false -F allow_auto_merge=true >/dev/null
-echo "  merge commits only, auto-merge allowed"
+gh api -X PATCH "repos/$repo" -F allow_merge_commit=true -F allow_squash_merge=false \
+  -F allow_rebase_merge=false -F allow_auto_merge=true -F delete_branch_on_merge=true >/dev/null
+echo "  merge commits only, auto-merge on"
 
-echo "Done. Remaining manual step: add the NORTHKEY_SYNC_TOKEN secret (see .github/workflows/northkey-upstream-sync.yml)."
+gh api -X PUT "repos/$repo/private-vulnerability-reporting" >/dev/null
+echo "  private vulnerability reporting on"
+gh label create needs-review --color B60205 --description "Upstream sync that needs a human" \
+  --force --repo "$repo" >/dev/null
+echo "  label needs-review"
+
+cat <<EOF
+Done. Last step, the sync token (fine-grained: Contents, Pull requests, Workflows, Actions = read/write):
+  gh secret set NORTHKEY_SYNC_TOKEN --env upstream-sync --repo $repo
+EOF

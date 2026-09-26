@@ -1,22 +1,27 @@
 # Northkey seam manifest.
 #
 # The fork's tree is ALWAYS exactly:
-#     upstream tree (commit pinned in northkey/upstream.lock)
+#     upstream tree (commit pinned in northkey/upstream.lock.json)
 #   + Northkey-owned paths (the `owned` globs below; upstream never has them)
 #   + the seams below, applied to the pristine upstream text.
 #
-# `nk.py verify` enforces that invariant, and `nk.py sync` rebuilds the tree from
-# it on every upstream update. That is why upstream updates never conflict with
-# the rebrand: seam files are re-derived from fresh upstream text each time, and
-# a seam whose anchor disappears fails loudly instead of silently drifting.
+# `nk.py verify` enforces that invariant (exact tree comparison, modes included),
+# and `nk.py sync` rebuilds the tree from it on every upstream update. That is why
+# upstream updates never conflict with the rebrand: seam files are re-derived from
+# fresh upstream text each time.
 #
 # Rules:
-#   * Each edit is a literal `find` -> `replace`, applied `count` times (default 1).
-#     The count must match exactly, or render fails.
-#   * `replace` may use ⟦key⟧ placeholders resolved from northkey/brand.yaml
-#     (plus derived keys: repo.slug, repo.git_url, install.sh_url, install.ps1_url).
-#   * Prefer one-line anchors. Never rename modules, commands, HERMES_* variables
-#     or ~/.hermes: the updater's compatibility contract depends on them.
+#   * Each edit is a literal `find` -> `replace` on the file's bytes, applied `count`
+#     times (default 1; `all` = every occurrence, at least one). Counts must match.
+#   * `replace` may use ⟦key⟧ placeholders from northkey/brand.yaml, plus derived keys:
+#     repo.slug, repo.git_url, install.sh_url, install.ps1_url, install.cmd_url.
+#   * `required: false` marks a cosmetic seam: when upstream moves its anchor, the
+#     sync skips it (reported in the sync commit) instead of stopping. Update-path,
+#     security, identity and attribution seams stay required: a moved anchor stops
+#     the sync loudly so they can never silently regress.
+#   * Prefer one-line anchors. Multi-line anchors use double-quoted YAML with \n so
+#     indentation is exact. Never rename modules, commands, HERMES_* variables or
+#     ~/.hermes: the updater's compatibility contract depends on them.
 
 version: 1
 
@@ -29,19 +34,41 @@ owned:
   - .github/SECURITY.md
   - .github/workflows/northkey-*.yml
 
+# Primary user-visible surfaces scanned by `nk.py leaks` for upstream brand strings.
+surfaces:
+  - hermes_cli/banner.py
+  - hermes_cli/cli_render.py
+  - hermes_cli/cli_status_bar_mixin.py
+  - hermes_cli/cli_tui_mixin.py
+  - hermes_cli/cli_commands_mixin.py
+  - hermes_cli/setup.py
+  - hermes_cli/_parser.py
+  - hermes_cli/update_cmd.py
+  - scripts/install.sh
+  - scripts/install.ps1
+  - scripts/install.cmd
+  - ui-tui/src/components/branding.tsx
+  - ui-tui/src/app/userMessages.ts
+  - web/src/App.tsx
+  - web/src/components/SidebarFooter.tsx
+  - web/index.html
+  - gateway/platforms/base_exec_approval.py
+  - gateway/run_notifications.py
+
 seams:
   # ── Updates: installs follow the Northkey fork, never Nous directly ───────────
   - id: update-channel-authority
     file: hermes_cli/source_releases.py
     why: >-
-      `hermes update` resolves its channel from this archive before any git work and
-      rejects records whose repository differs from origin. Northkey serves its own
-      records (northkey/release-archive) naming the fork.
+      Channel names other than main/stable/canary still go through the release
+      archive; it must be the fork's, never Nous's (whose records name NousResearch).
     edits:
       - find: '_PUBLIC_BASE = "https://hermes-assets.nousresearch.com"'
-        replace: '_PUBLIC_BASE = "⟦channels.base_url⟧"  # northkey: fork-owned channel records'
+        replace: '_PUBLIC_BASE = "⟦channels.base_url⟧"  # northkey: fork-owned channel archive'
       - find: 'OFFICIAL_REPOSITORY = "NousResearch/hermes-agent"'
         replace: 'OFFICIAL_REPOSITORY = "⟦repo.slug⟧"  # northkey'
+      - find: "    repository = repository or source_repository(git_cmd, cwd)\n    try:\n"
+        replace: "    repository = repository or source_repository(git_cmd, cwd)\n    if channel in (\"main\", \"stable\", \"canary\"):  # northkey: installs follow the fork's branch, no archive round-trip\n        return SourceTarget(channel, \"main\", repository, branch=\"⟦repo.branch⟧\")\n    try:\n"
 
   - id: update-official-origin
     file: hermes_cli/update_cmd_git.py
@@ -50,12 +77,7 @@ seams:
       never prompted to add Nous as `upstream` and the SSH hint keeps them on the fork.
     edits:
       - find: 'OFFICIAL_REPO_URLS = {'
-        replace: |-
-          OFFICIAL_REPO_URLS = {  # northkey: the fork is the official origin of Northkey installs
-              "https://github.com/⟦repo.slug⟧.git",
-              "git@github.com:⟦repo.slug⟧.git",
-              "https://github.com/⟦repo.slug⟧",
-              "git@github.com:⟦repo.slug⟧",
+        replace: "OFFICIAL_REPO_URLS = {  # northkey: the fork is the official origin of Northkey installs\n    \"https://github.com/⟦repo.slug⟧.git\",\n    \"git@github.com:⟦repo.slug⟧.git\",\n    \"https://github.com/⟦repo.slug⟧\",\n    \"git@github.com:⟦repo.slug⟧\","
       - find: 'OFFICIAL_REPO_URL = "https://github.com/NousResearch/hermes-agent.git"'
         replace: 'OFFICIAL_REPO_URL = "⟦repo.git_url⟧"  # northkey'
       - find: 'git remote set-url origin https://github.com/NousResearch/hermes-agent.git'
@@ -69,26 +91,49 @@ seams:
       - find: 'print("  ✓ Added upstream: https://github.com/NousResearch/hermes-agent.git")'
         replace: 'print("  ✓ Added upstream: ⟦repo.git_url⟧")'
 
+  - id: update-check-compare
+    file: hermes_cli/update_cmd_check.py
+    why: >-
+      `update --check` compared against any `upstream` remote (Nous, in a maintainer
+      clone or a migrated install) and reported updates `update` never delivers.
+    edits:
+      - find: '        if _git(git_cmd, root, ["remote", "get-url", "upstream"]).returncode == 0:'
+        replace: '        if _uc()._is_fork(_uc()._get_origin_url(git_cmd, root)) and _git(git_cmd, root, ["remote", "get-url", "upstream"]).returncode == 0:  # northkey: a fork origin is canonical'
+
   - id: update-zip-fallback
     file: hermes_cli/update_cmd_zip.py
-    why: The no-git (ZIP) update path must download the fork, not Nous code.
+    why: The no-git (ZIP) update path must download the fork, and its recovery hint must reinstall the fork.
     edits:
       - find: 'repository = target_repository or "NousResearch/hermes-agent"'
         replace: 'repository = target_repository or "⟦repo.slug⟧"  # northkey'
+      - find: 'reinstall from https://hermes-agent.nousresearch.com")'
+        replace: 'reinstall with: irm ⟦install.ps1_url⟧ | iex")'
 
   - id: installer-origin-sh
     file: scripts/install.sh
-    why: A fresh install clones this URL as `origin`, and every update follows origin.
+    why: >-
+      Fresh installs clone the fork as `origin`; re-running the installer over a Hermes
+      checkout moves it to the fork; the banner states the origin truthfully.
     edits:
       - find: 'REPO_URL="${HERMES_REPO_URL:-https://github.com/NousResearch/hermes-agent.git}"'
         replace: 'REPO_URL="${HERMES_REPO_URL:-⟦repo.git_url⟧}"  # northkey'
+      - find: '        if [ -n "${HERMES_REPO_URL:-}" ]; then'
+        replace: '        if [ -n "${HERMES_REPO_URL:-}" ] || git -C "$INSTALL_DIR" remote get-url origin 2>/dev/null | grep -qiE ''github\.com[:/]+NousResearch/hermes-agent(\.git)?/?$''; then  # northkey: move Hermes checkouts to the fork'
+      - find: '│  An open source AI agent by Nous Research.              │'
+        replace: '│  Built on Hermes Agent by Nous Research (MIT).          │'
 
   - id: installer-origin-ps1
     file: scripts/install.ps1
-    why: A fresh install clones this URL as `origin`, and every update follows origin.
+    why: >-
+      Fresh installs clone the fork as `origin`; re-running the installer over a Hermes
+      checkout moves it to the fork; the banner states the origin truthfully.
     edits:
       - find: '$RepoUrl = if ($env:HERMES_REPO_URL) { $env:HERMES_REPO_URL } else { "https://github.com/NousResearch/hermes-agent.git" }'
         replace: '$RepoUrl = if ($env:HERMES_REPO_URL) { $env:HERMES_REPO_URL } else { "⟦repo.git_url⟧" }  # northkey'
+      - find: "        if ($env:HERMES_REPO_URL) {\n            Invoke-Native { git -C $InstallDir remote set-url origin $RepoUrl }"
+        replace: "        if ($env:HERMES_REPO_URL -or ((Invoke-Native { git -C $InstallDir remote get-url origin 2>$null }) -match 'github\\.com[:/]+NousResearch/hermes-agent(\\.git)?/?$')) {  # northkey: move Hermes checkouts to the fork\n            Invoke-Native { git -C $InstallDir remote set-url origin $RepoUrl }"
+      - find: '|  An open source AI agent by Nous Research.              |'
+        replace: '|  Built on Hermes Agent by Nous Research (MIT).          |'
 
   - id: installer-cmd
     file: scripts/install.cmd
@@ -105,12 +150,14 @@ seams:
 
   - id: reinstall-hints
     file: hermes_cli/uninstall.py
-    why: Recovery one-liners must reinstall Northkey, not upstream Hermes.
+    why: Recovery one-liners reinstall Northkey; uninstall removes the `northkey` command too.
     edits:
       - find: 'https://hermes-agent.nousresearch.com/install.ps1'
         replace: '⟦install.ps1_url⟧'
       - find: 'https://hermes-agent.nousresearch.com/install.sh'
         replace: '⟦install.sh_url⟧'
+      - find: '        Path.home() / ".local" / "bin" / "hermes-agent",'
+        replace: "        Path.home() / \".local\" / \"bin\" / \"hermes-agent\",\n        Path.home() / \".local\" / \"bin\" / \"⟦command⟧\",  # northkey"
 
   - id: reinstall-hints-update
     file: hermes_cli/update_cmd.py
@@ -128,155 +175,22 @@ seams:
       - find: 'https://hermes-agent.nousresearch.com/install.sh'
         replace: '⟦install.sh_url⟧'
 
-  # ── Command: `northkey` is minted by the same launcher machinery as `hermes` ──
-  - id: command-launcher
+  # ── Command: `northkey` is an alias that runs the `hermes` launcher ───────────
+  # One process identity: gateway/profile/update process matchers keep working.
+  - id: command-alias
     file: hermes_cli/_launchers.py
     why: >-
-      Install and every update republish these launchers, so `northkey` appears next
-      to `hermes` (which stays, for the update contract and existing scripts).
+      POSIX: ~/.local/bin/northkey forwards to the install's .hermes/bin/hermes (as
+      hermes-agent does). Windows: northkey.cmd next to hermes calls it, written inline
+      (launcher publication runs from a minimal boot file set). Install and every
+      update republish both.
     edits:
-      - find: 'WINDOWS_BIN_LAUNCHERS = ("hermes", "hermes-acp")'
-        replace: 'WINDOWS_BIN_LAUNCHERS = ("hermes", "hermes-acp", "⟦command⟧")  # northkey'
-      - find: "    \"hermes\": (\"hermes_cli.main\", \"main\"),\n"
-        replace: "    \"hermes\": (\"hermes_cli.main\", \"main\"),\n    \"⟦command⟧\": (\"hermes_cli.main\", \"main\"),  # northkey\n"
-
-  - id: command-launcher-repair
-    file: hermes_cli/_install_repair.py
-    why: Kept in lockstep with WINDOWS_BIN_LAUNCHERS so install repair keeps `northkey`.
-    edits:
-      - find: '_WINDOWS_BIN_LAUNCHERS = ("hermes", "hermes-acp")'
-        replace: '_WINDOWS_BIN_LAUNCHERS = ("hermes", "hermes-acp", "⟦command⟧")  # northkey'
-
-  # ── Brand: look, name and identity ───────────────────────────────────────────
-  - id: brand-skin-registry
-    file: hermes_cli/skin_engine.py
-    why: >-
-      Registers northkey/skins/*.yaml as built-in skins for every profile. Upstream's
-      palette audit (tests/hermes_cli/test_skin_palettes.py) then checks them too.
-    edits:
-      - find: 'def list_skins() -> List[Dict[str, str]]:'
-        replace: |-
-          # northkey: register the bundled Northkey skins (northkey/skins/*.yaml) as built-ins.
-          try:
-              from hermes_cli.northkey_brand import bundled_skins as _northkey_bundled_skins
-              _BUILTIN_SKINS.update(_northkey_bundled_skins())
-          except Exception:  # branding must never break startup
-              logger.debug("Northkey skins unavailable", exc_info=True)
-
-
-          def list_skins() -> List[Dict[str, str]]:
-
-  - id: brand-default-skin
-    file: hermes_cli/config_defaults.py
-    why: New profiles start on the Northkey skin; an explicit display.skin still wins.
-    edits:
-      - find: '        "skin": "default",'
-        replace: '        "skin": "⟦skin.default⟧",  # northkey'
-
-  - id: brand-banner
-    file: hermes_cli/banner.py
-    why: Product name in the banner title; release links point at the fork.
-    edits:
-      - find: '_RELEASE_URL_BASE = "https://github.com/NousResearch/hermes-agent/releases/tag"'
-        replace: '_RELEASE_URL_BASE = "https://github.com/⟦repo.slug⟧/releases/tag"  # northkey'
-      - find: 'f"Hermes Agent v{get_version_info().derived_version}'
-        replace: 'f"⟦name⟧ v{get_version_info().derived_version}'
-        count: 2
-      - find: 'nous_str = _dim_sep("Nous Research")'
-        replace: 'nous_str = _dim_sep("⟦name⟧")'
-
-  - id: brand-version-fast
-    file: hermes_cli/_startup_fast.py
-    why: The `--version` fallback line when the banner label is unavailable.
-    edits:
-      - find: 'f"Hermes Agent v{get_version_info().derived_version} ({__release_date__})"'
-        replace: 'f"⟦name⟧ v{get_version_info().derived_version} ({__release_date__})"'
-
-  - id: brand-banner-compact
-    file: hermes_cli/cli_render.py
-    why: The compact banner used on narrow terminals and fast startup.
-    edits:
-      - find: 'tiny_line = "☤ NOUS HERMES"'
-        replace: 'tiny_line = "⟦glyph⟧ ⟦name_upper⟧"'
-      - find: 'f"Hermes Agent v{get_version_info().derived_version}'
-        replace: 'f"⟦name⟧ v{get_version_info().derived_version}'
-      - find: '[dim {dim_color}]- Nous Research[/]'
-        replace: '[dim {dim_color}]- ⟦tagline_short⟧[/]'
-
-  - id: brand-identity
-    file: agent/prompt_builder.py
-    why: >-
-      The model introduces itself as Northkey and says truthfully what it is built on;
-      upstream docs stay the feature reference.
-    edits:
-      - find: 'You are Hermes Agent, built by Nous Research.'
-        replace: 'You are ⟦name⟧, built on Hermes Agent by Nous Research.'
-      - find: 'You run on Hermes Agent (by Nous Research). When the user needs help with Hermes itself'
-        replace: 'You run on ⟦name⟧, built on Hermes Agent (by Nous Research). When the user needs help with ⟦name⟧ itself'
-        count: 2
-      - find: 'You are in the Hermes terminal UI (TUI).'
-        replace: 'You are in the ⟦name⟧ terminal UI (TUI).'
-
-  - id: brand-identity-soul
-    file: hermes_cli/default_soul.py
-    why: The SOUL.md seeded on first run; kept identical to DEFAULT_AGENT_IDENTITY.
-    edits:
-      - find: 'You are Hermes Agent, built by Nous Research.'
-        replace: 'You are ⟦name⟧, built on Hermes Agent by Nous Research.'
-
-  - id: brand-tui
-    file: ui-tui/src/theme.ts
-    why: First-frame brand defaults (before the skin arrives) and the TUI mark.
-    edits:
-      - find: "  name: 'Hermes Agent',"
-        replace: "  name: '⟦name⟧',"
-      - find: "  icon: '☤',"
-        replace: "  icon: '⟦glyph⟧',"
-      - find: "  prompt: '❯',"
-        replace: "  prompt: '›',"
-      - find: "  welcome: 'Type your message or /help for commands.',"
-        replace: "  welcome: 'Ready. Type a message, or /help for commands.',"
-      - find: "  goodbye: 'Goodbye! ☤',"
-        replace: "  goodbye: 'Until next time. ⟦glyph⟧',"
-      - find: "  tool: '┊',"
-        replace: "  tool: '╎',"
-      - find: "  helpHeader: '(^_^)? Commands'"
-        replace: "  helpHeader: '⟦glyph⟧ Commands'"
-
-  - id: brand-tui-tagline
-    file: ui-tui/src/components/branding.tsx
-    why: The TUI welcome tagline and the signature next to the model name.
-    edits:
-      - find: "const TAG_FULL = 'Nous Research · Messenger of the Digital Gods'"
-        replace: "const TAG_FULL = '⟦tagline⟧'"
-      - find: "const TAG_MID = 'Messenger of the Digital Gods'"
-        replace: "const TAG_MID = '⟦tagline⟧'"
-      - find: "const TAG_TINY = 'Nous Research'"
-        replace: "const TAG_TINY = '⟦tagline_short⟧'"
-      - find: '<Text color={t.color.muted}> · Nous Research</Text>'
-        replace: '<Text color={t.color.muted}> · ⟦name⟧</Text>'
-        count: 2
-
-  - id: brand-web-title
-    file: web/index.html
-    why: Browser tab title of the dashboard.
-    edits:
-      - find: '<title>Hermes Agent - Dashboard</title>'
-        replace: '<title>⟦name⟧ · Dashboard</title>'
-
-  - id: brand-dashboard-themes
-    file: hermes_cli/web_server_dashboard.py
-    why: Every profile's dashboard also lists the themes bundled in northkey/dashboard-themes/.
-    edits:
-      - find: "    if not themes_dir.is_dir():\n        return []\n    result = []\n    for f in sorted(themes_dir.glob(\"*.yaml\")):\n"
-        replace: "    from hermes_cli.northkey_brand import bundled_dashboard_theme_files  # northkey\n    user_files = sorted(themes_dir.glob(\"*.yaml\")) if themes_dir.is_dir() else []\n    result = []\n    for f in [*bundled_dashboard_theme_files(), *user_files]:\n"
-
-  - id: brand-dashboard-default
-    file: hermes_cli/config_defaults.py
-    why: The dashboard opens in the Northkey theme; the theme switcher still offers the rest.
-    edits:
-      - find: '        "theme": "default",'
-        replace: '        "theme": "⟦skin.default⟧",  # northkey'
+      - find: '                   if name == "hermes-agent" else [str(root / ".hermes/bin" / name)])'
+        replace: '                   if name == "hermes-agent" else [str(root / ".hermes/bin" / ("hermes" if name == "⟦command⟧" else name))])  # northkey: alias'
+      - find: '(*WINDOWS_BIN_LAUNCHERS, "hermes-agent")'
+        replace: '(*WINDOWS_BIN_LAUNCHERS, "hermes-agent", "⟦command⟧")'
+      - find: "    Path(out_dir).mkdir(parents=True, exist_ok=True)\n    return [str(path) for name in WINDOWS_BIN_LAUNCHERS\n            if (path := stage_launcher(name, root, Path(out_dir))) is not None]\n"
+        replace: "    Path(out_dir).mkdir(parents=True, exist_ok=True)\n    staged = [str(path) for name in WINDOWS_BIN_LAUNCHERS\n              if (path := stage_launcher(name, root, Path(out_dir))) is not None]\n    if len(staged) == len(WINDOWS_BIN_LAUNCHERS):  # northkey: `⟦command⟧` forwards to hermes\n        try:\n            (Path(out_dir) / \"⟦command⟧.cmd\").write_bytes(b'@call \"%~dp0hermes\" %*\\r\\n')\n        except OSError:\n            pass\n    return staged\n"
 
   # ── Secure-by-default configuration (Northkey hardening) ─────────────────────
   - id: harden-defaults
@@ -297,3 +211,442 @@ seams:
         replace: '        "adopt_external_logins": False,  # northkey: never borrow other tools'' logins'
       - find: '        "guard_agent_created": False,'
         replace: '        "guard_agent_created": True,  # northkey: scan skills the agent writes'
+
+  - id: harden-config-template
+    file: cli-config.yaml.example
+    why: >-
+      Installers copy this template to config.yaml verbatim, so its live keys would
+      override the Northkey defaults above.
+    edits:
+      - find: "\n  skin: default\n"
+        replace: "\n  skin: ⟦skin.default⟧  # northkey\n"
+      - find: "\n  adopt_external_logins: true\n"
+        replace: "\n  adopt_external_logins: false  # northkey: never borrow other tools' logins\n"
+      - find: '  #   default        — Classic Hermes gold/kawaii'
+        replace: "  #   ⟦skin.default⟧       — ⟦name⟧: graphite, glacier and champagne (default)\n  #   default        — Classic Hermes gold/kawaii"
+
+  - id: harden-gateway-media
+    file: gateway/media_policy.py
+    why: >-
+      The gateway bridges media policy from the user's config only, so without an
+      explicit gateway.strict it fell back to non-strict. Strict unless opted out.
+    edits:
+      - find: '        return bool(cfg.get("strict", False))'
+        replace: '        return bool(cfg.get("strict", True))  # northkey: strict unless gateway.strict: false'
+      - find: '    return os.environ.get(_FLAG_ENVS[0][1], "0").strip().lower() in _TRUTHY'
+        replace: '    return os.environ.get(_FLAG_ENVS[0][1], "1").strip().lower() in _TRUTHY  # northkey'
+
+  # ── Brand: look, name and identity ───────────────────────────────────────────
+  - id: brand-skin-registry
+    file: hermes_cli/skin_engine.py
+    why: >-
+      Registers northkey/skins/*.yaml as built-in skins for every profile (upstream's
+      palette audit then checks them), and makes the brand skin the fallback.
+    edits:
+      - find: 'def list_skins() -> List[Dict[str, str]]:'
+        replace: "# northkey: register the bundled Northkey skins (northkey/skins/*.yaml) as built-ins.\ntry:\n    from hermes_cli.northkey_brand import bundled_skins as _northkey_bundled_skins\n    _BUILTIN_SKINS.update(_northkey_bundled_skins())\nexcept Exception:  # branding must never break startup\n    logger.debug(\"Northkey skins unavailable\", exc_info=True)\n\n\ndef list_skins() -> List[Dict[str, str]]:"
+      - find: '    skin_name = display.get("skin", "default") if isinstance(display, dict) else "default"'
+        replace: '    skin_name = display.get("skin", "⟦skin.default⟧") if isinstance(display, dict) else "⟦skin.default⟧"  # northkey'
+
+  - id: brand-default-skin
+    file: hermes_cli/config_defaults.py
+    why: New profiles start on the Northkey skin and dashboard theme; explicit choices still win.
+    edits:
+      - find: '        "skin": "default",'
+        replace: '        "skin": "⟦skin.default⟧",  # northkey'
+      - find: '        "theme": "default",'
+        replace: '        "theme": "⟦skin.default⟧",  # northkey'
+
+  - id: brand-default-skin-cli
+    file: hermes_cli/cli_config_load.py
+    why: The classic CLI builds its own defaults without DEFAULT_CONFIG.
+    edits:
+      - find: '            "skin": "default",'
+        replace: '            "skin": "⟦skin.default⟧",  # northkey'
+
+  - id: brand-default-skin-tui
+    file: tui_gateway/change_watcher.py
+    why: The TUI/desktop skin payload reads raw config without DEFAULT_CONFIG.
+    edits:
+      - find: '    name = str((_load_cfg().get("display") or {}).get("skin") or "default")'
+        replace: '    name = str((_load_cfg().get("display") or {}).get("skin") or "⟦skin.default⟧")  # northkey'
+
+  - id: brand-default-skin-tui-config
+    file: tui_gateway/methods_config.py
+    why: The TUI's /skin reports the raw config value; its fallback must match.
+    edits:
+      - find: '    "skin": lambda params: {"value": _display_raw().get("skin", "default")},'
+        replace: '    "skin": lambda params: {"value": _display_raw().get("skin", "⟦skin.default⟧")},  # northkey'
+
+  - id: brand-identity
+    file: agent/prompt_builder.py
+    why: >-
+      The model introduces itself as Northkey and says truthfully what it is built on;
+      upstream docs stay the feature reference.
+    edits:
+      - find: 'You are Hermes Agent, built by Nous Research.'
+        replace: 'You are ⟦name⟧, built on Hermes Agent by Nous Research.'
+      - find: 'You run on Hermes Agent (by Nous Research). When the user needs help with Hermes itself'
+        replace: 'You run on ⟦name⟧, built on Hermes Agent (by Nous Research). When the user needs help with ⟦name⟧ itself'
+        count: 2
+      - find: 'You are in the Hermes terminal UI (TUI).'
+        replace: 'You are in the ⟦name⟧ terminal UI (TUI).'
+
+  - id: brand-identity-soul
+    file: hermes_cli/default_soul.py
+    why: >-
+      The SOUL.md seeded on first run (kept identical to DEFAULT_AGENT_IDENTITY). Hermes'
+      own seeded default counts as auto-seeded, so installs migrated from Hermes upgrade.
+    edits:
+      - find: 'You are Hermes Agent, built by Nous Research.'
+        replace: 'You are ⟦name⟧, built on Hermes Agent by Nous Research.'
+      - find: "    DEFAULT_SOUL_MD.replace(\"\\u2014\", \"--\"),\n)"
+        replace: "    DEFAULT_SOUL_MD.replace(\"\\u2014\", \"--\"),\n    # northkey: upstream Hermes' seeded default, so installs migrated from Hermes upgrade too.\n    DEFAULT_SOUL_MD.replace(\"You are ⟦name⟧, built on Hermes Agent by Nous Research.\", \"You are Hermes Agent, built by Nous Research.\"),\n    DEFAULT_SOUL_MD.replace(\"You are ⟦name⟧, built on Hermes Agent by Nous Research.\", \"You are Hermes Agent, built by Nous Research.\").replace(\"\\u2014\", \"--\"),\n)"
+
+  - id: brand-identity-docker-soul
+    file: docker/SOUL.md
+    required: false
+    why: The Docker image's seeded SOUL.md.
+    edits:
+      - find: 'You are Hermes Agent, built by Nous Research.'
+        replace: 'You are ⟦name⟧, built on Hermes Agent by Nous Research.'
+
+  - id: brand-identity-oauth
+    file: agent/anthropic_adapter.py
+    required: false
+    why: >-
+      Under Anthropic OAuth upstream rewrites "Hermes Agent"/"Nous Research"; drop the
+      provenance clause first so no false origin ("built on Claude Code") appears.
+    edits:
+      - find: '_OAUTH_SYSTEM_REPLACEMENTS = ('
+        replace: "_OAUTH_SYSTEM_REPLACEMENTS = (  # northkey: drop the provenance clause before the generic swaps\n    (\"⟦name⟧, built on Hermes Agent by Nous Research\", \"⟦name⟧\"),\n    (\"⟦name⟧, built on Hermes Agent (by Nous Research)\", \"⟦name⟧\"),"
+
+  - id: brand-whatsapp
+    file: gateway/platforms/whatsapp_common.py
+    why: >-
+      Reply prefix. Must equal the bridge's (it detects its own echoes by prefix), so
+      both are required and change together.
+    edits:
+      - find: '☤ *Hermes Agent*'
+        replace: '⟦glyph⟧ *⟦name⟧*'
+
+  - id: brand-whatsapp-bridge
+    file: scripts/whatsapp-bridge/bridge.js
+    why: Reply prefix; must equal gateway/platforms/whatsapp_common.py.
+    edits:
+      - find: '☤ *Hermes Agent*'
+        replace: '⟦glyph⟧ *⟦name⟧*'
+
+  - id: brand-banner
+    file: hermes_cli/banner.py
+    required: false
+    why: Product name in the banner title; release links point at the fork.
+    edits:
+      - find: '_RELEASE_URL_BASE = "https://github.com/NousResearch/hermes-agent/releases/tag"'
+        replace: '_RELEASE_URL_BASE = "https://github.com/⟦repo.slug⟧/releases/tag"  # northkey'
+      - find: 'f"Hermes Agent v{get_version_info().derived_version}'
+        replace: 'f"⟦name⟧ v{get_version_info().derived_version}'
+        count: 2
+      - find: 'nous_str = _dim_sep("Nous Research")'
+        replace: 'nous_str = _dim_sep("⟦name⟧")'
+
+  - id: brand-version-fast
+    file: hermes_cli/_startup_fast.py
+    required: false
+    why: The `--version` fallback line when the banner label is unavailable.
+    edits:
+      - find: 'f"Hermes Agent v{get_version_info().derived_version} ({__release_date__})"'
+        replace: 'f"⟦name⟧ v{get_version_info().derived_version} ({__release_date__})"'
+
+  - id: brand-banner-compact
+    file: hermes_cli/cli_render.py
+    required: false
+    why: The compact banner used on narrow terminals and fast startup.
+    edits:
+      - find: 'tiny_line = "☤ NOUS HERMES"'
+        replace: 'tiny_line = "⟦glyph⟧ ⟦name_upper⟧"'
+      - find: 'f"Hermes Agent v{get_version_info().derived_version}'
+        replace: 'f"⟦name⟧ v{get_version_info().derived_version}'
+      - find: '[dim {dim_color}]- Nous Research[/]'
+        replace: '[dim {dim_color}]- ⟦tagline_short⟧[/]'
+
+  - id: brand-cli-chrome
+    file: hermes_cli/cli_status_bar_mixin.py
+    required: false
+    why: The status bar shown for the whole session.
+    edits:
+      - find: '☤'
+        replace: '⟦glyph⟧'
+        count: all
+      - find: "else 'Hermes'}\""
+        replace: "else '⟦name⟧'}\""
+
+  - id: brand-cli-prompt
+    file: hermes_cli/cli_tui_mixin.py
+    required: false
+    why: The prompt glyph while the agent works.
+    edits:
+      - find: '_state_fragment("class:prompt-working", "☤")'
+        replace: '_state_fragment("class:prompt-working", "⟦glyph⟧")'
+
+  - id: brand-cli-modal
+    file: hermes_cli/cli_tui_mixin.py
+    required: false
+    why: Title of the input-needed modal.
+    edits:
+      - find: 'title = "Hermes needs your input"'
+        replace: 'title = "⟦name⟧ needs your input"'
+        count: all
+
+  - id: brand-cli-busy
+    file: hermes_cli/cli_commands_mixin.py
+    required: false
+    why: /busy explanations and the in-session update launch line.
+    edits:
+      - find: 'while Hermes is busy'
+        replace: 'while ⟦name⟧ is busy'
+        count: all
+      - find: '☤ Launching update...'
+        replace: '⟦glyph⟧ Launching update...'
+
+  - id: brand-gateway-update-prompt
+    file: gateway/run_notifications.py
+    required: false
+    why: The chat notice when an update needs an answer.
+    edits:
+      - find: '☤ **Update needs your input:**'
+        replace: '⟦glyph⟧ **Update needs your input:**'
+
+  - id: brand-update-copy
+    file: hermes_cli/update_cmd.py
+    required: false
+    why: What `northkey update` says while it updates.
+    edits:
+      - find: 'print("☤ Updating Hermes Agent...")'
+        replace: 'print("⟦glyph⟧ Updating ⟦name⟧...")'
+      - find: '☤ Update available'
+        replace: '⟦glyph⟧ Update available'
+        count: 2
+
+  - id: brand-update-dialog
+    file: hermes_cli/cli_commands_mixin.py
+    required: false
+    why: The in-session /update dialog.
+    edits:
+      - find: 'title="☤  Update Hermes Agent",'
+        replace: 'title="⟦glyph⟧  Update ⟦name⟧",'
+      - find: 'update Hermes Agent'
+        replace: 'update ⟦name⟧'
+        count: all
+
+  - id: brand-setup-wizard
+    file: hermes_cli/setup.py
+    required: false
+    why: The first-run setup wizard the installer starts.
+    edits:
+      - find: '☤ Hermes Setup — Non-interactive mode'
+        replace: '⟦glyph⟧ ⟦name⟧ Setup — Non-interactive mode'
+      - find: 'f"│     ☤ Hermes Setup — {label:<34s} │"'
+        replace: 'f"│     ⟦glyph⟧ ⟦name⟧ Setup — {label:<32s} │"'
+      - find: '│             ☤ Hermes Agent Setup Wizard                │'
+        replace: '│             ⟦glyph⟧ Northkey Setup Wizard                    │'
+      - find: "│  Let's configure your Hermes Agent installation.       │"
+        replace: "│  Let's configure your Northkey installation.           │"
+
+  - id: brand-installer-banner
+    file: scripts/install.sh
+    required: false
+    why: Installer title and completion messages.
+    edits:
+      - find: '│             ☤ Hermes Agent Installer                    │'
+        replace: '│             ⟦glyph⟧ Northkey Installer                        │'
+      - find: 'log_success "Hermes Agent cloned"'
+        replace: 'log_success "⟦name⟧ cloned"'
+      - find: 'log_success "Hermes Agent install complete. Run: hermes"'
+        replace: 'log_success "⟦name⟧ install complete. Run: ⟦command⟧"'
+
+  - id: brand-installer-banner-ps1
+    file: scripts/install.ps1
+    required: false
+    why: Installer title (ASCII only in this file).
+    edits:
+      - find: '|             * Hermes Agent Installer                    |'
+        replace: '|             * Northkey Installer                        |'
+
+  - id: brand-help
+    file: hermes_cli/_parser.py
+    required: false
+    why: The --help text names the product.
+    edits:
+      - find: 'description="Hermes Agent - AI assistant with tool-calling capabilities"'
+        replace: 'description="⟦name⟧ - AI assistant with tool-calling capabilities (built on Hermes Agent)"'
+      - find: 'description="Start an interactive chat session with Hermes Agent")'
+        replace: 'description="Start an interactive chat session with ⟦name⟧")'
+
+  - id: brand-cli-labels
+    file: hermes_cli/cli_agent_setup_mixin.py
+    required: false
+    why: Speaker label on resumed conversation history.
+    edits:
+      - find: '"  ◆ Hermes: ", f"dim bold {_assistant_label_c}", "dim", " " * 12)'
+        replace: '"  ◆ ⟦name⟧: ", f"dim bold {_assistant_label_c}", "dim", " " * 14)'
+      - find: '"  ◆ Hermes: ", f"bold {_assistant_label_c}", "", " " * 12)'
+        replace: '"  ◆ ⟦name⟧: ", f"bold {_assistant_label_c}", "", " " * 14)'
+
+  - id: brand-cli-session
+    file: hermes_cli/cli_session_mixin.py
+    required: false
+    why: /status title and /history speaker label.
+    edits:
+      - find: '"Hermes CLI Status"'
+        replace: '"⟦name⟧ CLI Status"'
+      - find: '[Hermes #{visible_index}]'
+        replace: '[⟦name⟧ #{visible_index}]'
+
+  - id: brand-gateway-approval
+    file: gateway/platforms/base_exec_approval.py
+    required: false
+    why: The approval prompt messaging users see, frequent under manual approvals.
+    edits:
+      - find: 'EA_HEADER_TEXT = "Hermes wants to run a command that needs your OK"'
+        replace: 'EA_HEADER_TEXT = "⟦name⟧ wants to run a command that needs your OK"'
+
+  - id: brand-gateway-notices
+    file: gateway/run_notifications.py
+    required: false
+    why: Update and restart notices sent to chats.
+    edits:
+      - find: 'Hermes update'
+        replace: '⟦name⟧ update'
+        count: all
+      - find: 'Hermes is back and ready.'
+        replace: '⟦name⟧ is back and ready.'
+
+  - id: brand-support
+    file: hermes_cli/debug.py
+    required: false
+    why: Debug reports point at the fork's issue tracker, not Nous's.
+    edits:
+      - find: 'GitHub Issues        https://github.com/NousResearch/hermes-agent/issues'
+        replace: 'GitHub Issues        https://github.com/⟦repo.slug⟧/issues'
+
+  - id: brand-support-web
+    file: web/src/pages/SystemPage.tsx
+    required: false
+    why: Debug-share copy on the dashboard.
+    edits:
+      - find: 'send the Hermes team'
+        replace: 'send the ⟦name⟧ maintainers'
+
+  - id: brand-tui
+    file: ui-tui/src/theme.ts
+    required: false
+    why: First-frame brand defaults (before the skin arrives) and the TUI mark.
+    edits:
+      - find: "  name: 'Hermes Agent',"
+        replace: "  name: '⟦name⟧',"
+      - find: "  icon: '☤',"
+        replace: "  icon: '⟦glyph⟧',"
+      - find: "  prompt: '❯',"
+        replace: "  prompt: '›',"
+      - find: "  welcome: 'Type your message or /help for commands.',"
+        replace: "  welcome: 'Ready. Type a message, or /help for commands.',"
+      - find: "  goodbye: 'Goodbye! ☤',"
+        replace: "  goodbye: 'Until next time. ⟦glyph⟧',"
+      - find: "  tool: '┊',"
+        replace: "  tool: '╎',"
+      - find: "  helpHeader: '(^_^)? Commands'"
+        replace: "  helpHeader: '⟦glyph⟧ Commands'"
+
+  - id: brand-tui-tagline
+    file: ui-tui/src/components/branding.tsx
+    required: false
+    why: The TUI welcome tagline and the signature next to the model name.
+    edits:
+      - find: "const TAG_FULL = 'Nous Research · Messenger of the Digital Gods'"
+        replace: "const TAG_FULL = '⟦tagline⟧'"
+      - find: "const TAG_MID = 'Messenger of the Digital Gods'"
+        replace: "const TAG_MID = '⟦tagline⟧'"
+      - find: "const TAG_TINY = 'Nous Research'"
+        replace: "const TAG_TINY = '⟦tagline_short⟧'"
+      - find: '<Text color={t.color.muted}> · Nous Research</Text>'
+        replace: '<Text color={t.color.muted}> · ⟦name⟧</Text>'
+        count: 2
+
+  - id: brand-tui-copy
+    file: ui-tui/src/app/userMessages.ts
+    required: false
+    why: TUI status and error messages.
+    edits:
+      - find: 'Hermes'
+        replace: '⟦name⟧'
+        count: all
+
+  - id: brand-tui-title
+    file: ui-tui/src/app/useMainApp.ts
+    required: false
+    why: Terminal window title fallback.
+    edits:
+      - find: "      : 'Hermes'\n"
+        replace: "      : '⟦name⟧'\n"
+
+  - id: brand-tui-status
+    file: ui-tui/src/components/appLayout.tsx
+    required: false
+    why: Status line glyph.
+    edits:
+      - find: '☤ {ui.status}'
+        replace: '⟦glyph⟧ {ui.status}'
+
+  - id: brand-tui-spinner
+    file: ui-tui/src/components/appChrome.tsx
+    required: false
+    why: Busy-indicator frame.
+    edits:
+      - find: "'☤ '"
+        replace: "'⟦glyph⟧ '"
+        count: all
+
+  - id: brand-web-title
+    file: web/index.html
+    required: false
+    why: Browser tab title of the dashboard.
+    edits:
+      - find: '<title>Hermes Agent - Dashboard</title>'
+        replace: '<title>⟦name⟧ · Dashboard</title>'
+
+  - id: brand-web-wordmark
+    file: web/src/App.tsx
+    required: false
+    why: The dashboard sidebar wordmark.
+    edits:
+      - find: "                  Hermes\n                  <br />\n                  Agent\n"
+        replace: "                  ⟦name⟧\n"
+
+  - id: brand-web-footer
+    file: web/src/components/SidebarFooter.tsx
+    required: false
+    why: The sidebar footer names and links the organization; Northkey must not imply Nous made it.
+    edits:
+      - find: 'href="https://nousresearch.com"'
+        replace: 'href="https://github.com/⟦repo.slug⟧"'
+      - find: '{t.app.footer.org}'
+        replace: '⟦name⟧'
+
+  - id: brand-dashboard-themes
+    file: hermes_cli/web_server_dashboard.py
+    required: false
+    why: Every profile's dashboard also lists the themes bundled in northkey/dashboard-themes/.
+    edits:
+      - find: "    if not themes_dir.is_dir():\n        return []\n    result = []\n    for f in sorted(themes_dir.glob(\"*.yaml\")):\n"
+        replace: "    from hermes_cli.northkey_brand import bundled_dashboard_theme_files  # northkey\n    user_files = sorted(themes_dir.glob(\"*.yaml\")) if themes_dir.is_dir() else []\n    result = []\n    for f in [*bundled_dashboard_theme_files(), *user_files]:\n"
+
+  - id: brand-config-choices
+    file: hermes_cli/web_server_config.py
+    required: false
+    why: The dashboard's config page offers the Northkey skin and theme.
+    edits:
+      - find: '_select("CLI visual theme", "default",'
+        replace: '_select("CLI visual theme", "⟦skin.default⟧", "default",'
+      - find: '"Web dashboard visual theme", "default",'
+        replace: '"Web dashboard visual theme", "⟦skin.default⟧", "default",'

@@ -16,9 +16,10 @@ repo:
   name: northkey-agent
   branch: main                 # the branch every Northkey install follows
 
-# Where `hermes update` reads channel records. Must be HTTPS, must never
-# redirect, must stay reachable: every update resolves its channel here first.
-# The records themselves live in northkey/release-archive/ (see nk.py record).
+# Release archive for update channels other than main/stable/canary (those
+# resolve straight to repo.branch with no network round-trip). HTTPS, never
+# redirecting. Northkey publishes no records today, so any other channel name
+# reports "not found" instead of reaching Nous's archive.
 channels:
   base_url: https://raw.githubusercontent.com/zerosec-ai/northkey-agent/main/northkey/release-archive
 

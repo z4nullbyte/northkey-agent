@@ -478,7 +478,7 @@ def get_active_skin_name() -> str:
 def init_skin_from_config(config: dict) -> None:
     """Initialize the active skin from CLI config at startup."""
     display = config.get("display") or {}
-    skin_name = display.get("skin", "default") if isinstance(display, dict) else "default"
+    skin_name = display.get("skin", "northkey") if isinstance(display, dict) else "northkey"  # northkey
     set_active_skin(skin_name.strip() if isinstance(skin_name, str) and skin_name.strip() else "default")
 
 

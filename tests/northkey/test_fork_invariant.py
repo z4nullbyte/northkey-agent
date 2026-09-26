@@ -9,10 +9,16 @@ from tests.northkey._brand import load_nk
 
 def test_tree_is_upstream_plus_owned_paths_plus_seams():
     nk = load_nk()
-    assert nk.verify(None) == []
+    problems, _skipped = nk.verify(None)
+    assert problems == []
 
 
-def test_every_seam_still_matches_the_pinned_upstream_text():
+def test_every_required_seam_matches_the_pinned_upstream_text():
     nk = load_nk()
-    base = nk.read_lock()["commit"]
-    nk.render_check(base)  # raises NkError naming the seam whose anchor moved
+    src = nk.Source()
+    manifest = nk.load_manifest(src)
+    # Raises NkError naming the seam when a required anchor moved.
+    _, skipped = nk.render_tree(nk.read_lock(src)["commit"], manifest,
+                                nk.brand_context(nk.load_yaml(src.read(nk.BRAND_PATH))))
+    optional = {seam.id for seam in manifest.seams if not seam.required}
+    assert set(skipped) <= optional

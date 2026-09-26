@@ -541,7 +541,9 @@ def _oauth_wire_namer(anthropic_tools: List[Dict[str, Any]]):
     return to_wire
 
 
-_OAUTH_SYSTEM_REPLACEMENTS = (
+_OAUTH_SYSTEM_REPLACEMENTS = (  # northkey: drop the provenance clause before the generic swaps
+    ("Northkey, built on Hermes Agent by Nous Research", "Northkey"),
+    ("Northkey, built on Hermes Agent (by Nous Research)", "Northkey"),
     ("Hermes Agent", "Claude Code"), ("Hermes agent", "Claude Code"), ("Nous Research", "Anthropic"),
 )
 # The slug is rewritten only as a standalone prose word. Joined to a host, path, repo, mailbox

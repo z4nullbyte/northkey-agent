@@ -31,6 +31,25 @@ jobs:
       - run: python -m pip install --disable-pip-version-check ruamel.yaml==0.18.16
       - run: python northkey/tools/nk.py verify --rev HEAD
 
+  report:
+    name: Brand coverage report (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.14"
+      - run: python -m pip install --disable-pip-version-check ruamel.yaml==0.18.16
+      - name: Upstream brand strings on primary surfaces
+        run: python northkey/tools/nk.py leaks
+      - name: Action pins upstream has moved past
+        run: python northkey/tools/nk.py pins
+
   tests:
     name: Northkey tests + upstream brand-sensitive suites
     needs: invariant
@@ -47,11 +66,27 @@ jobs:
       - name: Run tests
         env:
           HERMES_PYTHON: ${{ github.workspace }}/.venv/bin/python
-        run: >-
-          scripts/run_tests.sh
-          tests/northkey
-          tests/hermes_cli/test_skin_palettes.py
-          tests/hermes_cli/test_skin_engine.py
-          tests/hermes_cli/test_source_check.py
-          tests/hermes_cli/test_update_channel.py
-          -q
+        # Upstream suites touched by seams run in full, minus the node ids that pin a
+        # value Northkey changes on purpose (northkey/expected-divergence.txt, each
+        # re-asserted with Northkey's value in tests/northkey/).
+        run: |
+          mapfile -t deselect < <(sed 's/#.*//' northkey/expected-divergence.txt | awk 'NF {print "--deselect=" $1}')
+          scripts/run_tests.sh \
+            tests/northkey \
+            tests/test_tests_tree_layout.py \
+            tests/hermes_cli/test_skin_palettes.py \
+            tests/hermes_cli/test_skin_engine.py \
+            tests/hermes_cli/test_skin_cmd.py \
+            tests/hermes_cli/test_banner.py \
+            tests/hermes_cli/test_source_check.py \
+            tests/hermes_cli/test_source_release_channels.py \
+            tests/hermes_cli/test_source_channel_integration.py \
+            tests/hermes_cli/test_source_launcher_publication.py \
+            tests/hermes_cli/test_update_fetch_failure_classifier.py \
+            tests/hermes_cli/test_oauth_status_pool_observation.py \
+            tests/hermes_cli/test_startup_fast_guards.py \
+            tests/hermes_cli/test_timestamps_command.py \
+            tests/hermes_cli/test_web_server.py \
+            tests/agent/test_anthropic_adapter.py \
+            tests/tools/test_approval_mode_parity.py \
+            "${deselect[@]}" -q
